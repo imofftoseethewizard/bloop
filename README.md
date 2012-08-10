@@ -124,13 +124,13 @@ either Chris and Drew are in the same pool, or they've previously exchanged publ
 
 # Glossary
 
-*Actor* A participant in the pool. Can be the master, a delegate, an agent, or a client.
+*Actor* &mdash; A participant in the pool. Can be the master, a delegate, an agent, or a client.
 
-*Agent* An identified, untrusted actor.  These actors provide most of the services of the pool.
+*Agent* &mdash; An identified, untrusted actor.  These actors provide most of the services of the pool.
 
-*Caller* In the context of a connection, the agent which initiates.
+*Caller* &mdash; In the context of a connection, the agent which initiates.
 
-*Challenge* An interchange between two repositories during a store request in which the handler
+*Challenge* &mdash; An interchange between two repositories during a store request in which the handler
  requires the caller to prove that it faithfully keeps at least as much data as it is requesting
  to store.
 
@@ -146,12 +146,12 @@ all blocks that had a response from a repository other than the caller.  (*As a 
 of the digests should be the same, but as long as the caller and one other respond with matching
 digests, then it is reasonable to presume the caller faithfully stores the block.)
 
-*Client* An unidentified, untrusted actor.  These actors consume the services of the pool.
+*Client* &mdash; An unidentified, untrusted actor.  These actors consume the services of the pool.
 
-*Delegate* An identified, trusted actor.  These actors ensure pool integrity and coordinate the
+*Delegate* &mdash; An identified, trusted actor.  These actors ensure pool integrity and coordinate the
  actions of the agents.
 
-*Digest* A digest is a seeded cryptographic hash of a subset of a data block computed by a
+*Digest* &mdash; A digest is a seeded cryptographic hash of a subset of a data block computed by a
  repository.  It is used to challenge a repository to prove that it faithfully keeps a data block.
 
 The digest request contains the id of the block, a seed, an address, a length (in bytes), and
@@ -160,7 +160,7 @@ seed is prepended to the bytes from the block, and the hash is computed.  The re
 refuse any request with identical specification of block, seed, address, and length until the
 blackout has passed.
 
-*Granularity* The size of the largest data block that the pool will accommodate.
+*Granularity* &mdash; The size of the largest data block that the pool will accommodate.
 
 Large objects can be broken up into multiple blocks, so it is not a restriction on the size of
 entity that can be stored in the pool.  Recognizing that not all agents will be able to deliver
@@ -173,9 +173,9 @@ virtual servers, a much larger block size might be workable.  Note that this onl
 bound on the size of the blocks in the pool.  Smaller blocks of irregular size are permissible as
 well.
 
-*Handler* In the context of a connection, the agent which accepts.
+*Handler* &mdash; In the context of a connection, the agent which accepts.
 
-*Handshake* The process by which two actors assert their identity to each other.
+*Handshake* &mdash; The process by which two actors assert their identity to each other.
 
 After the handler accepts the connection, it sends its id and a connection id to the caller.  If
 the caller wishes to assert its identity to the handler, it responds with a signed message
@@ -189,45 +189,45 @@ containing the connection id and the id of the handler.
 Note that clients are allowed to assert their identity in the handshake if they have subscribed to
 the handler.
 
-*Id* In general, this refers to the id associated by the registrary with an identified actor.  The
+*Id* &mdash; In general, this refers to the id associated by the registrary with an identified actor.  The
  id is derived from the actor's public key by a well-known algorithm.  In general, this will be a
  cryptographic hash of a specific kind and size, optionally followed by a truncation or a
  determinate extension.
 
-*Identified* An actor that has a key registered with the pool registrar.  The master, delegates,
+*Identified* &mdash; An actor that has a key registered with the pool registrar.  The master, delegates,
  and agents are all identified.  Clients are not.
 
-*Index* An agent which allows other actors to find where data is stored, what data each repository
+*Index* &mdash; An agent which allows other actors to find where data is stored, what data each repository
  holds, which manager each agent has, which agents are indexes, which agents are monitors, as well
  as general information about the pool.
 
-*Invitation* A message signed by an agent which will allow a client to subscribe to that agent.
+*Invitation* &mdash; A message signed by an agent which will allow a client to subscribe to that agent.
 The message should contain the id of the pool's master, the id of the inviting agent, a
 subscription id, and optionally an expiration.  The inviting agent may also limit the number of
 times an invitation can be used, or place any other restriction deemed necessary.
 
-*Key* Refers to the public key of an identified actor.  An actor's private key will always be
+*Key* &mdash; Refers to the public key of an identified actor.  An actor's private key will always be
  referred to in full.
 
-*Manager* A delegate responsible for coordinating and monitoring agents.  There must be at least
+*Manager* &mdash; A delegate responsible for coordinating and monitoring agents.  There must be at least
  one manager per pool.  Each agent has a manager.
 
-*Master* An identified, trusted actor.  In each pool, there is only one master.  The master
+*Master* &mdash; An identified, trusted actor.  In each pool, there is only one master.  The master
  initiates the pool, authorizes delegates, picks the registrar, and coordinates the delegates.
 
-*Monitor* An agent which aggregates exceptions about other agents, and reports to the appropriate
+*Monitor* &mdash; An agent which aggregates exceptions about other agents, and reports to the appropriate
  manager when a malicious, unfaithful, or problematic pattern of errors occurs.
 
-*Pool* A set of actors which cooperate to provide a secure, distributed, peer to peer data storage
+*Pool* &mdash; A set of actors which cooperate to provide a secure, distributed, peer to peer data storage
 service.
 
-*Registrar* A delegate responsible for registering the keys of the identified actors, for
+*Registrar* &mdash; A delegate responsible for registering the keys of the identified actors, for
  generating their ids, for asserting the authority of the delegates, and for maintaining the
  status of the agents.  There is only one registrar per pool.  The registrar should also provide
  the cryptographic methods that are supported for signatures, a description of the algorithm
  used to create an actor's id from its public key, and the granularity of the pool.
 
-*Repository* An agent which stores and serves data.
+*Repository* &mdash; An agent which stores and serves data.
 
 To store data, an actor calls a repository and asserts its identity during the handshake.  The
 caller then sends a message requesting to store data, and includes the amount required.  The
@@ -251,10 +251,10 @@ which the block might be found, or a simple message saying that the block could 
 To delete data, an actor calls a repository and asserts its identity during the handshake.  Blocks
 can only be deleted by a delegate or the agent that created the block.
 
-*Signed* A message which has a cryptographic signature; in particular, the signature derived from
+*Signed* &mdash; A message which has a cryptographic signature; in particular, the signature derived from
  the private key of the sender.
 
-*Subscription* The process by which a client register's its key with an agent, and in return
+*Subscription* &mdash; The process by which a client register's its key with an agent, and in return
  obtains its id.
 
 The client calls the agent. In response to the handshake, the client sends a signed message
@@ -262,11 +262,11 @@ containing the invitation and its public key.  The handler responds with a signe
 containing the connection id, its own id, and the id that it has assigned to the client.  Multiple
 subscriptions with the same key are allowed, but they should all return the same id.
 
-*Trusted* An actor that plays a critical role in the pool, whose proper operation is necessary to
+*Trusted* &mdash; An actor that plays a critical role in the pool, whose proper operation is necessary to
  maintain pool integrity.  The master and delegates are trusted.
 
-*Unidentified* An actor that has not registered a key with the registrar.  Only clients are
+*Unidentified* &mdash; An actor that has not registered a key with the registrar.  Only clients are
  unidentified.
 
-*Untrusted* An actor that has no critical role in the pool.  Agents and clients are untrusted.
+*Untrusted* &mdash; An actor that has no critical role in the pool.  Agents and clients are untrusted.
 
