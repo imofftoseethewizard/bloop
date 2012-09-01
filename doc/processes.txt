@@ -1,0 +1,55 @@
+Processes
+=========
+
+# Registering in a Pool
+
+To join a pool an agent simply creates a keypair and sends the public key information (key,
+algorithm, length) to the registrar.  The registrar responds either with an id and expiration
+date, or a refusal.  The id is computed from the key by a published cryptographic hash and
+optional truncation.  If the hash results in a collision with a key already registered, the
+registrar will refuse.
+
+# Identity Verification
+
+The subject sends the challenger a greeting.
+The challenger responds with a nonce.
+The subject returns the nonce in a signed message.
+The challenger approves or disapproves the challenge and replies with a signed message.
+
+# Renewing a Pool Registration
+
+The agent opens a connection to the registrar.
+The agent initiates identity verification.
+The agent requests registration renewal.
+If successful, the returned message contains the new expiration date; otherwise, it contains a refusal.
+
+# Resigning a Pool Registration
+
+The agent opens a connection to the registrar.
+The agent initiates identity verification.
+The agent offers resignation.
+The registrar must accept the resignation and delete all records of the agent.
+The registrar must post an announcement that the agent has resigned.
+All coordinators and agents must delete all records of the agent.
+
+# Posting an Announcement
+
+The coordinator opens a connection to the message board.
+The coordinator initiates identify verification.
+The coordinator requests posting of the announcement.
+The message board is responsible for propagating the announcement to other message boards.
+The message board is responsible for ensuring that all subsequent requests to retrieve messages
+will include the announcement if and only if the recipient has not already seen it, and if and
+only if the expiration date has not already passed.
+
+# Posting a Message
+
+The sender opens a connection to a message board.
+The sender sends the recipient's id, desired expiration, and desired max reads to the message
+board.
+If the board covers the recipient, it accepts the message.
+The board may clamp the expiration and max reads to within a range; if omitted, the board will
+provide defaults.
+The board is responsible for delivering the message to the recipient the next time the recipient
+collects messages.
+If the board does not cover the recipient, then it replies with a redirect to the appropriate board.

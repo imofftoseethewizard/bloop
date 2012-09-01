@@ -1,0 +1,147 @@
+Suppose Alice has data, and she wants it to be stored robustly, to be kept private, and to be
+available everywhere. Presently, Alice can have robust storage and universal access from sites
+like Flickr and YouTube for limited types of content; she can get robust storage and privacy from
+backup services like Mozy or products like Apple's TimeMachine; she could get privacy and
+universal access through a VPN served from her home computer.  If Alice were both proactive and
+technically skilled, she could set up a VPN and use a backup service and have all three.
+
+Millions of other internet users face similar tradeoffs.
+
+Suppose Alice has a desktop computer at home that is generally always on and has a broadband
+connection, and suppose that it has a significant amount of extra storage.  
+
+
+For 
+
+Questions:
+
+What services are available which provide robust storage (backup), universal availability, or
+privacy, or some combination of those three?
+
+Types of services: storage/backup (Mozy, TimeMachine), publishing (Flickr), privacy (Tor, PGP).
+
+
+Suppose Alice, Bob, Cathy, and Dan all have extra storage available on a generally available
+system.  Assuming they do not trust each other, how can they cooperate to provide each other
+robust, private, highly available storage?
+
+If they all agree to store and to make available a copy of the others' data, and none cheat, then
+each could expect highly available and robust storage (provided individual failures are
+uncorrelated). Each can encrypt any data deemed private. Since none of the participants trust each
+other, we cannot assume that none will cheat, but need a protocol which negates any benefit of
+cheating.
+
+A simple tit for tat protocol would be if Alice would like to store 1 GB with 3x duplication, then
+she should expect to store 1 GB on behalf of each of the others; each may only use as much of the
+resources of the others, collectively, as the others may use of theirs.  Brute force verification
+on any schedule is probably neither practical nor useful. Assuming the amount of data stored
+several orders of magnitude larger than the per-second bandwith of the connecting network, then
+the expense in bandwidth and time prevents a direct check of the faithfulness of any actor.
+However, a reduced, stochastic faithfulness check in response to a storage request could be both
+efficient and effective.
+
+If Alice would like to store 10 MB and have each of the others duplicate that, then Alice agrees
+that she must prove to each other that she faithfully keeps 10 MB of data for the others.  For
+Bob, say, to verify that Alice keeps 10 MB faithfully, he must first find 10 MB of data that Alice
+has promised to keep (and assume for the moment that Alice has agreed to keep at least that much),
+then he must challenge Alice to prove that she holds that data.  Bob can't simply request that
+Alice produce the data, since it's likely to be too slow to transmit it over the network.  He
+could request that Alice produce a hash of the data with a given algorithm, but she might have
+cached just the hashes with some common algorithms.  If Bob sends Alice a sufficiently large nonce
+to be prepended to the data prior to hashing and the algorithm to be used, then he prevents her
+from storing just the hash.  However, if Alice knows that Cathy holds the same data, then she can
+just request the hash from Cathy and pass it to Bob.  So Bob must first inform all counterparties
+that hold the data that they should refuse to compute a hash of the data for the given nonce for
+at least enough time to challenge Alice.
+
+
+ If Bob has a copy of the data he wishes to test Alice with, then he could simply request
+that Alice produce that data.  A 10 MB upload from a home cable/DSL service is currently too slow
+to make this practical.  Instead, Bob could send Alice a nonce and optionally indicate a hashing
+algorithm, and require Alice to return the hash of the data and the nonce.  If Bob does not have
+the data he wishes to verify, then he could first ask the others who agreed to hold the same data to
+compute the same nonce, and then ask Alice.  Now, Alice could just as easily ask the others for
+the nonce, so a faithful actor must have a blackout period for a hash-data nonce, that allows a
+challenger to shut a
+
+A generally available system is one which will respond to a request within one second (or some
+other threshold) at least 90% of the time.
+
+Alice, Bob, Cathy, and Dan agree that they will duplicate each other's data and will make it
+available immediately upon request.  They agree that any block of data will be stored by the owner
+and two of the other three.  They do not trust each other.
+
+Suppose Alice has agreed to store 1 GB of data belonging to the others, and that she wishes to
+have Bob and Cathy store an additional 1 MB.  Bob and Cathy both have the right to prove that
+Alice is a faithful counterparty prior to agreeing to store her data.  Assuming that it is
+impractical or inefficient to require Alice to deliver to Bob and to Cathy all of the bits she is
+required to hold, each could require Alice only to prove that she holds only an ammount
+commensurate with what she is presently requesting of the others.  That is, Bob and Cathy
+independently select at random a 1 MB subset (or so) of the 1 GB that Alice has agreed to keep.
+Each then challenges Alice to prove that she holds the data.  If Bob requires that Alice produce a
+hash of the requested data, then she'll only have to send a couple hundred bytes.  Bob would like
+to ensure that Alice has the data and not just a hash of it, so he sends her a nonce she must
+prepend to the data prior to hashing.  Since Bob may or may not have the data, he doesn't know the
+result of the hash.  He first asks the others who have agreed to hold the data for a hash with the
+nonce that he intends to request of Alice, and that the others refuse to compute the same hash for
+a set period of time.  Bob may then request the hash of Alice, and if Alice fails to produce the
+result before the blackout expires, then he may suspect that Alice is unfaithful, or at the very
+least, unreliable, and may refuse to store the data.  If Alice can produce the hash, then Bob can
+be reasonably assured that Alice actually stores the data.
+
+Ways in which an actor can be unfaithful: he might be unresponsive to requests to store data; he
+might during request to store data before completing agreement; or he might agree to store data,
+but fail to do so.  While the Alice and Bob scenario above handles the third case, it may be that
+Alice requests storage of the others, but fails to agree to store data for the others, and so
+trivially upholds her agreement (as there is no data for her to fail to store).  To prevent Alice
+from cheating in the first and second ways, the other actors need to coordinate their behavior.
+That is, when an actor does not respond, or a request of an actor fails, some other actor needs to
+be responsible for aggregating complaints and failures, and for recognizing and communicating to
+the others patterns of failures which indicate unfaithfulness.
+
+Suppose that Bob is responsible for monitoring Alice. Then counterparties to Alice may report to
+Bob any timeouts or failures that occur while interacting with Alice.  If Bob deems these to
+constitute a pattern of unfaithfulness, then he communicates with Alice and the others that he has
+made that judgement.  The others are free to do as they choose with this information, but are
+encouraged to exile Alice from the group.
+
+It may be that Bob is a faithful actor in terms of storage and retrieval, but that he dislikes
+Alice and wishes to sabotage her by reporting to the others that she has displayed a pattern of
+unfaithfulness when in fact she is a faithful actor.  Alice and the others need a way to check
+that Bob is not just faithful, but honorable as well.  Alternatively, Alice and Bob may be
+colluding to cheat the others, where Alice fails to respond to requests to store data and Bob
+fails to notify the others of her pattern of unfaithful behavior. Since there is no mutual trust,
+Alice must have at least two other monitors.  While other actors cannot be certain a majority of
+the monitors are colluding to smear Alice, or to help Alice cheat, if the selection of the
+monitors is done randomly, then they can be assured that risk of collusion is limited to the
+proportion of conspiritors as a percentage of the population of the participants.  I.e., they can
+rely on the independence of the monitors to the extent that their selection is random, and the
+more that agree, the more assured they can be of the faithfulness of Alice and lack of collusion
+among her monitors.
+
+That then begs the question of who assigns the monitors, and moreover, who admits new entrants to
+the pool, who adjudicates conflicts among monitors, etc.
+
+Suppose that Zachary is trusted by all to be both faithful, fair, and independent.  If Zachary were to
+assign monitoring roles, then all participants would be relatively assured that a consensus of
+monitors would be fair.  Furthermore, Zachary could notify the other agents when he deems an agent
+to be unfaithful, either by direct challenge, or by a consensus of the agent's monitors.
+
+An agent which has been deemed unfaithful may be subject to having their data discarded without
+penalty by the other agents, and may find that other agents refuse requests to store data. 
+
+A fair monitor is one which reports patterns of unfaithful behavior if and only if the subject
+displays such behavior.
+
+How should agents respond to 
+-----------------
+
+# Definitions
+
+Generally available -- A service which is available 90% of the time.
+
+Suppose Alex has a computer with extra storage and a generally available broadband connection.
+Suppose as well, that Bailey, Chris, and Drew also have generally available computers with extra
+storage, and that none of the four trust any of the others. Provided there is at least one party
+whom the others trust, they can reliably share their extra storage to provide robust, secure,
+highly available storage.

@@ -1,0 +1,1 @@
+include ${SOCIAL_ROOT}/etc/common.make

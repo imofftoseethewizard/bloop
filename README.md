@@ -1,7 +1,5 @@
-Open Pool
+jOpen Pool
 =========
-
-# Overview
 
 This proposal describes an open source, peer to peer, distributed data storage pool.  The
 architecture and protocols enable individual mutually untrusted agents to cooperate and to
@@ -66,6 +64,7 @@ block, and the same digest from the caller.  The caller must produce a digest fo
 for those blocks which the at least one other repository returned a digest before timeout, the two
 must match.  Note that a digest request may include a blackout period, so that the caller can be
 prevented from obtaining a digest from one of the redundant repositories.
+
 
 # Examples
 

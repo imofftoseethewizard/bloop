@@ -1,0 +1,170 @@
+substrate/pool
+n==============
+
+Pool is a cooperative substrate for providing distributed, redundant and secure data storage.
+
+# Structure
+
+Pool is composed of a trusted core and an untrusted periphery. The core provides critical services
+which cannot be delegated to untrusted participants, e.g. agent registration; id, role, and
+priviledge assignment; auditing. The periphery includes both agents, which collectively provide
+the service, and clients, the consumers of the service.
+
+All actors have a public key.
+
+
+## Core
+
+### Master and Delegates
+
+Registers new agents. Creates their unique id and assigns a manager.
+
+#### Protocols
+##### New Agent -- registration
+##### New Agent -- manager assignment
+
+
+### Managers
+
+stores information about agents: network address and ports; contact email address; bandwidth
+estimates; handles communication with agent's owner (via email, sms, etc), record of compliance,
+public key. Assigns roles to agents.
+
+#### Protocols
+##### New Agent -- registration
+##### New Agent -- manager assignment
+##### Role assignment
+##### Request agent metadata
+##### add index range
+##### remove index range
+##### add monitor range
+##### remove monitor range
+
+### Auditors
+
+Evaluates agents for compliance with standards and protocols. Recommends probation or suspension
+to appropriate managers.
+
+### Agent Provacateurs
+
+ These trusted delegates pretend to be untrusted agents to test the error reporting and monitoring
+capabilities of agents.
+
+## Periphery
+
+Agents are expected to have high availability and low latency.  This does not mean that a home
+desktop computer need to attempt 99.99% availability and sub-millisecond response times, but
+rather that it should generally be on, running the service, and connected to the internet most of
+the time when power and network connectivity is available; and that it should be able to respond
+to a request within a few hundred milliseconds at worst.
+
+Clients need not be regularly connected to the internet, nor have low latency responses.  It is
+anticipated that most clients will be installed on a mobile phone, tablet, or laptop.
+
+### Agents and their Roles
+
+#### Store
+
+Creates, reads, updates, and deletes blocks of data.  Blocks are indexed by owner and an
+owner-defined id. Blocks are expected to be compressed and encrypted in some fashion.
+
+#### Protocols
+##### CRUD
+##### check hash of block
+
+#### Index
+
+Associates blocks, their owners, and their hosts.
+
+##### Protocols
+###### Hosts of block
+###### blocks of owner
+###### blocks of host
+###### set range
+
+#### Monitor
+
+Recieves warning and error messages given by and about a group of agents.
+
+#### Tester
+
+Performs specific actions on behalf of auditors, and in specific ways (including intentional
+failures).
+
+### Clients
+
+# Data Representation
+
+# Protocols
+
+## Message Format
+  property              offset   size (bytes)
+  protocol id           0x0000   4
+  method id             0x0004   4
+  timestamp             0x0008   8
+  length of message     0x0010   4
+  sequence index        0x0014   2
+  sequence limit        0x0016   2
+  parameters            0x0018   variable (rest of message)
+
+## Protocol Ids
+
+# Examples
+
+# Synopsis
+
+Context
+To enable a serverless social framework with inherent privacy protection and strong cryptography.
+
+Components
+the storage substrate
+the toolkit
+sample applications
+
+
+Process
+
+All delegates and agents have a public key.  These keys are available from managers.
+
+trusted zone
+  master
+    creates delegates
+
+  delegates
+    registrar
+      provides ids for all other delegates, and for all agents
+    managers
+      keeps public keys
+      keeps stats on agents
+      assigns roles to agents
+    auditors
+      evaluate agents for proper functioning
+      notify managers of bad agents
+
+untrusted zone
+  agents
+    perform assigned roles
+    typically highly available with low latency
+      server
+      always-on desktop/workstation
+
+  clients
+    use the services of agents
+    typically intermittently connected, or with significant latency 
+    mobile/tablet
+    laptop
+
+agent roles
+  repository
+    stores data on behalf of delegates and agents
+
+  index
+    provides indices for finding blocks, their hosts, and their owners
+    find the manager of an agent
+
+  monitor
+    aggregates exceptions concerning other agents
+
+  test
+    tests facilities of other agents
+    act on behalf of auditors
