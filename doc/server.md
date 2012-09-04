@@ -74,6 +74,32 @@ External Components
 - sqlite3 (npm install sqlite3)
 - stanford javascript crypto
 
+### ORM and DB
+
+Sqlite3 makes a nice db for small projects, and is easy to manage.  MySql and Postgres are better
+for larger systems with concurrency.  The general dev path is to start with Sqlite3 and transition
+to one of the others when necessary.  So... that implies the work of making the ORM somewhat
+flexible.
+
+What needs do we have in an orm?
+
+- Map db row to property.
+- Map db relation rows to property.
+- Store changed back to db.
+ - are per-property changes required?
+- Ensure db has correct tables.
+- Create tables from properties
+- properties
+ - db-js translation
+ - auto-load collections
+  - client's application keys
+  - 
+
+
+
+
+
+
 Client Table
 
 - id (rowid)
@@ -351,10 +377,10 @@ storage becomes limited.
 
 #### Authorize Client
 
-    POST https://.../client/authorize?id=<id>?allotment=<allotment>
-    POST https://.../client/authorize?id=<id>?max-queues=<max queues>
-    POST https://.../client/authorize?id=<id>?max-relays=<max relays>
-    POST https://.../client/authorize?id=<id>?max-connections=<max connections>
+    POST* /client/<id>/authorize?allotment=<allotment>
+    POST* /client/<id>/authorize?max-queues=<max queues>
+    POST* /client/<id>/authorize?max-relays=<max relays>
+    POST* /client/<id>/authorize?max-connections=<max connections>
 
 All clients may write to public message queues, read objects, and inquire about other clients' public
 metadata. Unauthorized clients may have other privileges granted to them by authorized clients,
@@ -988,6 +1014,15 @@ access to the access control list prototype for the given resource type.
 
 ### General and Administrative
 
+Resource urls have the following form
+
+    /<category>/<id>/<method>?<parameters>
+
+or
+    /<category>/<id>
+
+or
+    /<category>/<method>
 
 #### About
 
@@ -1034,7 +1069,7 @@ linking the client's key to the id.
 
 #### Set Allotment
 
-    POST* /client/authorize?id=<id>&allotment=<storage limit>
+    POST* /client/<client id>/authorize?allotment=<storage limit>
 
 The session must be authorized with system privileges.
 
