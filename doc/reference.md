@@ -1,8 +1,115 @@
-## API Reference
-
-The API below is expressed as HTTP.
+## HTTP API Reference
 
 Response bodies are in JSON format.
+
+### Open Issues
+
+
+- Would it be useful for `<transaction id>/commit` to return the list of resources that were changed?
+- What should the format of the websocket API summaries be?
+
+
+### TODO
+
+##### Device ID
+
+Specify device id protocol.  Consider cases for lost devices.
+
+
+##### Notifications
+
+A socket-based notification service from the server to subscribing clients.  This would allow a
+client to know when a queue had been changed without polling.  This would also give the an
+administrative application better monitoring ability.
+
+Notification scenarios:
+
+
+API
+
+    socket /<resource type>/notify? 
+          condition=<condition>&
+          [client-id=<client id>&]
+          [application-id=<application id>]
+
+
+    wss://example.com/object/notify?condition=delete&client-id=ADE0-0CB24
+
+    wss://example.com/queue/0034-3342-0459-4893/notify?condition=new-post
+          
+    socket /<resource type>/<resource id>/notify?condition=<condition>
+
+where condition is one of 
+
+    new
+    change
+    delete
+    listen
+    connect
+    accept
+    join
+    drop
+    close
+
+Capabilities:
+
+    POST* /client/<client id>/access
+
+    notify-new
+    notify-change
+    notify-delete
+    access-notify-new
+    access-notify-change
+    access-notify-delete
+
+    POST* /<resource type>/<resource id>/access
+
+    notify-change
+    notify-delete
+    notify-listen
+    notify-connect
+    notify-accept
+    notify-join
+    notify-drop
+    notify-close
+    access-notify-change
+    access-notify-delete
+    access-notify-listen
+    access-notify-connect
+    access-notify-accept
+    access-notify-join
+    access-notify-drop
+    access-notify-close
+
+
+##### Enumeration
+
+An administrative application needs to be able to enumerate resources.  Selection should be by
+type, application, size, dates of creation and modification, access control, etc.
+
+
+##### Post Item
+
+Describe the content of a post item.
+
+
+##### Resource Metadata
+
+Define the API to get the number of items in a queue, and the size of a queue.
+
+Define the API to get metadata about an object: create time, modification time, size.
+
+
+##### Rename Object
+
+"Object" is an awkward name to use in Javascript for anything other than the predefined Object
+object.  Something that evokes its opacity would be best.
+
+
+
+##### Example Websocket API
+
+Add a websocket api in the examples section.
 
 
 ### Reference Format
@@ -68,7 +175,9 @@ successful, it will have an empty response body, otherwise it will return the "n
 
 ### Generic Resource APIs
 
-
+All resources have four APIs in common: `new`, `delete`, `access`, and `default/access`.  The
+syntax of each of these is identical across all resource types.  Any differences in semantics will
+be discussed in the respective resource section.
 
 #### Creating a Resource
 
@@ -107,7 +216,7 @@ transaction is committed.
           [client-id=<client id>&]
           [application-id=<application id>&] 
           [grant=<comma-separated list of capabilities>&] 
-          [revoke=<comma-separated list of capabilities>] 
+          [revoke=<comma-separated list of capabilities>&] 
           [inherit=<comma-separated list of capabilities>] 
     <empty>
     ----
@@ -159,15 +268,12 @@ access to the access control list prototype for the given resource type.
 
 ### General and Administrative
 
-Resource urls have the following form
+Resource urls have the following three forms:
 
     /<category>/<id>/<method>?<parameters>
-
-or
     /<category>/<id>
-
-or
     /<category>/<method>
+
 
 #### About
 
@@ -212,15 +318,15 @@ the id to the client in the body of the response.  The server should make an ent
 linking the client's key to the id.
 
 
-#### Set Allotment
+#### Set Quota
 
-    POST* /client/<client id>/authorize?allotment=<storage limit>
+    POST* /client/<client id>/set-quota?storage-limit=<storage limit>
 
 The session must be authorized with system privileges.
 
 Sets the client's storage limit.  The storage limit is presumed to be in bytes.  It may also be
 specified in KB, MB, GB or TB.  Fractions are allowed.  All objects, keys, queues, and metadata
-count against the client's allotment.  Clients with zero allotment or with excessive usage may not
+count against the client's quota.  Clients with zero quota or with excessive usage may not
 create new resources, and system administrators may place further restrictions.
 
 
@@ -390,7 +496,6 @@ cleared.
 
 The server releases all of the locked objects and returns.  The transaction cookie is cleared.
 
-OPEN: Would it be useful for the server to return the list of resources that were changed?
 
 
 ### Objects
@@ -431,7 +536,7 @@ Objects provide the following capabilities:
     <hash>
     unauthorized
     not found
-    allotment exceeded
+    quota exceeded
     hash mismatch
 
 
@@ -448,7 +553,7 @@ only if the given hash matches the hash of the object currently stored on the se
     <content>
     unauthorized
     not found
-    allotment exceeded
+    quota exceeded
 
 Replacement replaces the content of object with the content given, returning the prior content.
 
@@ -461,7 +566,7 @@ Replacement replaces the content of object with the content given, returning the
     <empty>
     unauthorized
     not found
-    allotment exceeded
+    quota exceeded
 
 Update changes the content of the object.
 
@@ -474,7 +579,7 @@ Update changes the content of the object.
     <empty>
     unauthorized
     not found
-    allotment exceeded
+    quota exceeded
 
 A client may copy an object, obtaining a new object id.  This is identical in behavior to a
 combination of read and create, but is much more efficient.
@@ -590,7 +695,7 @@ Post, read, and flush may require authentication, depending on the queue's permi
     queue not found
     queue full
     post too large
-    allotment exceeded
+    quota exceeded
 
 
 #### Reading Posts from a Queue
@@ -606,8 +711,6 @@ Post, read, and flush may require authentication, depending on the queue's permi
     unauthorized
     queue not found
 
-TODO: describe array of posts
-TODO: how to get the length of a queue # of posts
 
 #### Flushing Posts from a Queue
 
@@ -694,31 +797,30 @@ feature until WebRTC is widely supported &mdash; present in IE, Safari, Chrome a
     DELETE* /relay/<relay id>
 
 
-
 #### Connecting to a Relay
 
-    wss://.../relay/<relay id>
+    socket /relay/<relay id>
 
 Connecting to a relay will request a connection to the owner (or current listener) of the relay.
 
 
 #### Listing Connections to a Relay
 
-    GET https://.../relay/<relay id>/list
+    GET* /relay/<relay id>/list
 
 The response body holds a list of the ids of all connections to the relay.
 
 
 #### Listing Clients on a Connection
 
-    GET https://.../connection/<connection id>/list
+    GET* /connection/<connection id>/list
 
 The response body hold a list of the ids of all clients participating in the connection.
 
 
 #### Joining a Connection
 
-    wss://.../connection/<connection-id>/join
+    socket /connection/<connection-id>/join
 
 Initially a connection has only two clients participating.  Additional clients may join the
 connection.  Also, a client that is already participating may switch devices by rejoining from a
@@ -727,21 +829,21 @@ different device; traffic then flows to the new device and no longer to the old 
 
 #### Closing a Connection
 
-    POST https://.../connection/<connection-id>/close
+    POST* /connection/<connection-id>/close
 
 Used to force all participants to hang up.
 
 
 #### Dropping a Client on a Connection
 
-    POST https://.../connection/<connection-id>/drop/<client id>
+    POST* /connection/<connection-id>/drop/<client id>
 
 Abruptly ends a clients participation in a connection.
 
 
 #### Listening for and Accepting Connections
 
-    wss://.../relay/<relay id>/listen
+    socket /relay/<relay id>/listen
 
 Only one client may be listening on a connection at a time.  If a new listen request is made for a
 relay that already has a listener then it is refused, unless the new request comes from a client
@@ -752,7 +854,7 @@ client on the new device must rejoin each connection to reroute traffic.
 When a client connects to the relay, the listener receives a message that contains the id of the
 waiting connection.  In response, the listener should accept the connection by connecting to 
 
-    wss://.../connection/<connection id>
+    socket /connection/<connection id>
 
 The listener may discover the id of the connecting client by listing the clients on the
 connnection.  If the listener chooses to refuse the connection, then it should close the
@@ -763,34 +865,10 @@ To cease listening, it is sufficient to close the socket.
 
 #### Setting Relay and Connection Limits
 
-    POST https://.../relay/<relay id>/limit?max-connections=<max connections>
-    POST https://.../relay/<relay id>/limit?max-clients=<max clients>
-    POST https://.../connection/<connection id>/limit?max-clients=<max clients>
+    POST* /relay/<relay id>/limit?max-connections=<max connections>
+    POST* /relay/<relay id>/limit?max-clients=<max clients>
+    POST* /connection/<connection id>/limit?max-clients=<max clients>
 
 
 
-#### Setting Connection Permissions
-
-    POST https://.../connection/<connection id>/permit?id=<other id>&grant=<granted>&revoke=<revoked>
-
-This api is used to grant or revoke access rights to an connection.  By default the owner has all
-access rights, though it may restrict its own access.  Regardless, a client will always have
-permission to change permissions of connections that it owns.  _granted_ and _revoked_ are space
-or comma delimited lists of the following
-
-    list-clients
-    join
-    close
-    drop
-    permit
-    limit
-    all
-
-corresponding to the respective apis above.  Permissions granted to or revoked from a client on a
-connection override those granted to the client on the corresponding relay.
-
-Permission additions are processed before removals, so in the case that an item appears in both,
-it will be revoked after the call is finished.
-
-Connections do not support global permissions.
-
+### Errors
