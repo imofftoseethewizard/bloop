@@ -1,7 +1,0 @@
-Registrar
-=========
-
-
-A pool may only have one registrar and it must be a coordinator, though the information hosted by
-the registrar may be cached by managing coordinators.
-
