@@ -11,6 +11,16 @@ Response bodies are in JSON format.
 
 ### TODO
 
+##### Access Control Lists
+
+An access control list is an array of objects with the following members `clientId`,
+`applicationId`, `deviceId`, `granted`, and `revoked`.  If `applicationId` or `deviceId` is
+provided, then `clientId` will also be provided.  If none of the ids are provided then `revoked`
+will not be provided either, and the access controls given apply to unauthorized sessions.
+`granted` and `revoked` are comma-delimited lists of capabilities.  At least one of the two must
+be specified.  The capabilities in the two lists are disjoint, though is is permissible, for
+example, to grant `signal` and revoke `signal-delete`.
+
 ##### Device ID
 
 Specify device id protocol.  Consider cases for lost devices.
@@ -215,6 +225,7 @@ transaction is committed.
     POST* /<resource type>/<resource id>/access?
           [client-id=<client id>&]
           [application-id=<application id>&] 
+          [device-id=<device id>&]
           [grant=<comma-separated list of capabilities>&] 
           [revoke=<comma-separated list of capabilities>&] 
           [inherit=<comma-separated list of capabilities>] 
@@ -763,112 +774,207 @@ that posts do not expire.
 
 ### Relays
 
-Relays are designed to provide low-latency connections between browsers.  This is a stopgap
-feature until WebRTC is widely supported &mdash; present in IE, Safari, Chrome and Firefox.
+Relays are designed to support chat-like services, that is, low latency exchanges between two or
+more clients.  Clients connect to the relay and are allowed to read or write or both, depending on
+the access granted by the relay's owner.  Relays also provide a signal connection which notifies
+listeners of connections, disconnections, message writes and reads, and other changes of state.
 
-#### Capabilities
+
+#### Standard Resource APIs
+
+    POST*   /relay/default/limit
+    POST*   /relay/default/access
+    POST*   /relay/new
+    DELETE* /relay/<relay id>
+    POST*   /relay/<relay id>/drop
+    POST*   /relay/<relay id>/limit  
+    POST*   /relay/<relay id>/access
+
+#### Limits
+
+    POST* /relay/default/limit?
+            [connections-per-client=<connections per client>&]
+            [connections-per-application=<connections per application>&]
+            [connections-per-device=<connections per device>&]
+            [message-length=<message length>&]
+            [history-length=<history length>]
+    <empty>
+    ----
+    ok
+    unauthorized
+    invalid value
+
+
+    POST* /relay/<relay id>/limit?
+            [connections-per-client=<connections per client>&]
+            [connections-per-application=<connections per application>&]
+            [connections-per-device=<connections per device>&]
+            [message-length=<message length>&]
+            [history-length=<history length>]
+    <empty>
+    ----
+    ok
+    not found
+    unauthorized
+    invalid value
+
+
+The number of connections to a relay may be limited for a given client, application, or device.
+The values given must be either a positive integer or `unlimited`.  Initial defaults are for
+clients and devices to be allowed unlimited connections, but applications only one.
+
+Messages can be limited to a maximum length; the default is `none`.  Setting the message length to
+zero drops all connections and temporarily disables future connections.  The relay can be
+re-enabled by setting the message length to a non-zero value.
+
+History length gives the number of messages that will be kept in the history.  The history is used
+by the reflection APIs `received` and `sent`.
+
+
+#### Reflection
+
+    GET* /relay/default/limit
+
+Returns an object containing members `connectionsPerClient`, `connectionsPerApplication`,
+`connectionsPerDevice`, `messageLength` (in bytes) and `historyLength` which describes the limits
+given to new relays.
+
+
+    GET* /relay/default/access?
+           [client-id=<client id>&]
+           [application-id=<application id>&]
+           [device-id=<device id>]
+
+Returns the access control list given to new relays for the specified client, application, or
+device.  If none of the parameters are given, then the full access control list will be returned.
+
+
+    GET* /relay/<relay id>/limit
+
+Similar to `GET* /relay/default/limit`, except that it applies to a specific relay.
+
+
+    GET* /relay/<relay id>/access
+
+Similar to `GET* /relay/default/access`, except that it applies to a specific relay.
+
+
+    GET* /relay/<relay id>/clients
+
+Returns a list of all clients currently connected.  Each item in the list is an object with
+members `clientId` and optionally `applicationId` or `deviceId`.  Either one or both of
+`applicationId` or `deviceId` may be omitted.
+
+
+    GET* /relay/<relay id>/received
+           [count=<count>&]
+           [start-index=<start index>&]
+           [start-date=<start date>&]
+           [end-date=<end date>&]
+           [client-id=<client id>&]
+           [application-id=<application id>&]
+           [device-id=<device id>]
+    ----
+    <message receipts>
+    unauthorized
+    not found
+
+    GET* /relay/<relay id>/sent?
+           [count=<count>&]
+           [start-index=<start index>&]
+           [start-date=<start date>&]
+           [end-date=<end date>&]
+           [client-id=<client id>&]
+           [application-id=<application id>&]
+           [device-id=<device id>]
+    ----
+    <message sent records>
+    unauthorized
+    not found
+
+Message sent records and message receipts both contain the client id of the sender (`sender`) or
+recipient (`recipient`) of the message, as well as the time it was received/sent (`timestamp`),
+and a hash of the message contents (`messageHash`).
+
+To limit the number of items returned, specify a `count`.  The default is 10; to get all
+available, specify `all`.  `start-index` is used to specify the first item returned.  Normally,
+items are returned, newest first, until count has been fulfilled.  To obtain later items, specify
+a start index.  `start-date` and `end-date` are used to request items with timestamps in a limited
+range.
+
+#### Messages
+
+    socket  /relay/<relay id>/
+
+A client may connect to the relay if it has either read or write access.  The server relays
+messages written to the relay to all connected clients with read access.
+
+
+#### Signals
+
+    socket  /relay/<relay id>/signal
+  
+A client may connect to the relay's signals if it has access to at least one signal.  The server
+sends to each client only those signals to which it has access.
+
+Each signal is an object with at least three members.  They type of the signal (`type`), the time
+of the triggering event (`timestamp`), the id of the client which requested the triggering event
+(`clientId`), and the id of the subject relay (`relayId`).  Signals may also include the id of the
+application (`applicationId`) or the device (`deviceId`) if the respective qualifications were
+authenticated for the triggering session. Additional members specific to each signal type provide
+further details.
+
+The signals for `delete`, `connect`, `disconnect`, and `drop` have no further members. `received`
+and `sent` also include the hash of the subject message content (`messageHash`).  Signals for
+`limit` provide additional members which are identical to those returned by `GET* \relay\<relay
+id>\limit`.  Signals for `access` have additional members corresponding to the arguments given to the
+triggering request: `subjectClientId`, `subjectApplicationId`, `subjectDeviceId`, `granted`,
+`revoked`, and `inherited`.
+
+
+##### Relay Capabilities
 
     delete
-    list-connections
-    list-clients
-    listen
-    connect
-    join
-    close
+    read
+    write
     drop
-    limit
+    list
+    get-clients
+    get-received
+    get-sent
+    get-limit
+    get-access
+    get
+    signal-delete
+    signal-connect
+    signal-disconnect
+    signal-received
+    signal-sent
+    signal-drop
+    signal-limit
+    signal-access
+    signal
     access-delete
-    access-list-connections
-    access-list-clients
-    access-listen
-    access-connect
-    access-join
-    access-close
+    access-read
+    access-write
     access-drop
-    access-limit
+    access-list
+    access-get-clients
+    access-get-received
+    access-get-sent
+    access-get-limit
+    access-get-access
+    access-get
+    access-signal-delete
+    access-signal-connect
+    access-signal-disconnect
+    access-signal-received
+    access-signal-sent
+    access-signal-drop
+    access-signal-limit
+    access-signal-access
+    access-signal
     access
-
-
-#### Standard Methods
-
-    POST /relay/new
-    POST* /relay/default/access
-    POST* /relay/<relay id>/access
-    DELETE* /relay/<relay id>
-
-
-#### Connecting to a Relay
-
-    socket /relay/<relay id>
-
-Connecting to a relay will request a connection to the owner (or current listener) of the relay.
-
-
-#### Listing Connections to a Relay
-
-    GET* /relay/<relay id>/list
-
-The response body holds a list of the ids of all connections to the relay.
-
-
-#### Listing Clients on a Connection
-
-    GET* /connection/<connection id>/list
-
-The response body hold a list of the ids of all clients participating in the connection.
-
-
-#### Joining a Connection
-
-    socket /connection/<connection-id>/join
-
-Initially a connection has only two clients participating.  Additional clients may join the
-connection.  Also, a client that is already participating may switch devices by rejoining from a
-different device; traffic then flows to the new device and no longer to the old one.
-
-
-#### Closing a Connection
-
-    POST* /connection/<connection-id>/close
-
-Used to force all participants to hang up.
-
-
-#### Dropping a Client on a Connection
-
-    POST* /connection/<connection-id>/drop/<client id>
-
-Abruptly ends a clients participation in a connection.
-
-
-#### Listening for and Accepting Connections
-
-    socket /relay/<relay id>/listen
-
-Only one client may be listening on a connection at a time.  If a new listen request is made for a
-relay that already has a listener then it is refused, unless the new request comes from a client
-using the same id; that is, the user has switched devices.  In this case, the new device takes
-over as listener.  Note that extant connections will still be routed to the old device, so the
-client on the new device must rejoin each connection to reroute traffic.
-
-When a client connects to the relay, the listener receives a message that contains the id of the
-waiting connection.  In response, the listener should accept the connection by connecting to 
-
-    socket /connection/<connection id>
-
-The listener may discover the id of the connecting client by listing the clients on the
-connnection.  If the listener chooses to refuse the connection, then it should close the
-connection without accepting it (https://.../connection/<connection id>/close).
-
-To cease listening, it is sufficient to close the socket.
-
-
-#### Setting Relay and Connection Limits
-
-    POST* /relay/<relay id>/limit?max-connections=<max connections>
-    POST* /relay/<relay id>/limit?max-clients=<max clients>
-    POST* /connection/<connection id>/limit?max-clients=<max clients>
-
 
 
 ### Errors
