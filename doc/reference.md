@@ -11,6 +11,11 @@ Response bodies are in JSON format.
 
 ### TODO
 
+##### API Format
+
+A more structured api description, less dependent on HTTP syntax.
+
+
 ##### Access Control Lists
 
 An access control list is an array of objects with the following members `clientId`,
@@ -19,7 +24,8 @@ provided, then `clientId` will also be provided.  If none of the ids are provide
 will not be provided either, and the access controls given apply to unauthorized sessions.
 `granted` and `revoked` are comma-delimited lists of capabilities.  At least one of the two must
 be specified.  The capabilities in the two lists are disjoint, though is is permissible, for
-example, to grant `signal` and revoke `signal-delete`.
+example, to grant `signal` and revoke `signal::delete`.
+
 
 ##### Device ID
 
@@ -39,13 +45,13 @@ API
 
     socket /<resource type>/notify? 
           condition=<condition>&
-          [client-id=<client id>&]
-          [application-id=<application id>]
+          [clientId=<client id>&]
+          [applicationId=<application id>]
 
 
-    wss://example.com/object/notify?condition=delete&client-id=ADE0-0CB24
+    wss://example.com/block/notify?condition=delete&clientId=ADE0-0CB24
 
-    wss://example.com/queue/0034-3342-0459-4893/notify?condition=new-post
+    wss://example.com/queue/0034-3342-0459-4893/notify?condition=newPost
           
     socket /<resource type>/<resource id>/notify?condition=<condition>
 
@@ -65,31 +71,31 @@ Capabilities:
 
     POST* /client/<client id>/access
 
-    notify-new
-    notify-change
-    notify-delete
-    access-notify-new
-    access-notify-change
-    access-notify-delete
+    notify::new
+    notify::change
+    notify::delete
+    access::notify::new
+    access::notify::change
+    access::notify::delete
 
     POST* /<resource type>/<resource id>/access
 
-    notify-change
-    notify-delete
-    notify-listen
-    notify-connect
-    notify-accept
-    notify-join
-    notify-drop
-    notify-close
-    access-notify-change
-    access-notify-delete
-    access-notify-listen
-    access-notify-connect
-    access-notify-accept
-    access-notify-join
-    access-notify-drop
-    access-notify-close
+    notify::change
+    notify::delete
+    notify::listen
+    notify::connect
+    notify::accept
+    notify::join
+    notify::drop
+    notify::close
+    access::notify::change
+    access::notify::delete
+    access::notify::listen
+    access::notify::connect
+    access::notify::accept
+    access::notify::join
+    access::notify::drop
+    access::notify::close
 
 
 ##### Enumeration
@@ -107,14 +113,7 @@ Describe the content of a post item.
 
 Define the API to get the number of items in a queue, and the size of a queue.
 
-Define the API to get metadata about an object: create time, modification time, size.
-
-
-##### Rename Object
-
-"Object" is an awkward name to use in Javascript for anything other than the predefined Object
-object.  Something that evokes its opacity would be best.
-
+Define the API to get metadata about an block: create time, modification time, size.
 
 
 ##### Example Websocket API
@@ -130,7 +129,7 @@ The reference format is described below by example.
 #### Simple GET API
 
     GET /about/contact
-    ----
+    ^^^^
     { name, [emailAddress], [phoneNumber] }
     
 
@@ -143,10 +142,10 @@ location of the API relative to the server's root.  If the server was bound to
 
 #### Simple POST API
 
-    POST* /object/new[?transaction=<transaction id>]
+    POST* /block/new[?transaction=<transaction id>]
     <content>
-    ----
-    objectId
+    ^^^^
+    blockId
     unauthorized
     quota exceeded
 
@@ -159,7 +158,7 @@ listed after the response descriptor.  See the Errors section for details.
 #### Simple DELETE API
 
     DELETE* /queue/<queue id>?[transaction=<transaction id>]
-    ----
+    ^^^^
     <empty>
     queue not found
 
@@ -169,16 +168,16 @@ successful, it will have an empty response body, otherwise it will return the "n
 
 #### Complex POST API
 
-    POST* /object/<object id>/permit? 
-          client-id=<client id>& 
-          [application-id=<application id>&] 
+    POST* /block/<block id>/permit? 
+          clientId=<client id>& 
+          [applicationId=<application id>&] 
           [grant=<permissions granted>&] 
           [revoke=<permissions revoked>&] 
           [inherit=<permissions inherited>&]
     <empty>
-    ----
+    ^^^^
     <empty>
-    object not found
+    block not found
     unknown client
     unknown capability
 
@@ -193,7 +192,7 @@ be discussed in the respective resource section.
 
     POST* /<resource type>/new[?transaction=<transaction id>]
     <content>
-    ----
+    ^^^^
     <resource id>
     unauthorized
     quota exceeded
@@ -210,27 +209,27 @@ will be deleted.
 #### Deleting a Resource
 
     DELETE* /<resource type>/<resource id>[?transaction=<transaction id>]
-    ----
+    ^^^^
     <empty>
     unauthorized
     resource not found
 
 If a transaction id is provided, then the resource id must have been provided to the begin
-transaction request, either as resource held or blocked.  The resource will be deleted when the
+transaction request, either as resource held or locked.  The resource will be deleted when the
 transaction is committed.
 
 
 #### Changing Access Control
 
     POST* /<resource type>/<resource id>/access?
-          [client-id=<client id>&]
-          [application-id=<application id>&] 
-          [device-id=<device id>&]
+          [clientId=<client id>&]
+          [applicationId=<application id>&] 
+          [deviceId=<device id>&]
           [grant=<comma-separated list of capabilities>&] 
           [revoke=<comma-separated list of capabilities>&] 
           [inherit=<comma-separated list of capabilities>] 
     <empty>
-    ----
+    ^^^^
     <empty>
     resource not found
     unknown client
@@ -259,13 +258,13 @@ revocations are removed.  If the resulting entry is empty, then it is deleted.
 #### Changing Default Access Control
 
     POST* /<resource type>/default/access?
-          [client-id=<client id>&]
-          [application-id=<application id>&] 
+          [clientId=<client id>&]
+          [applicationId=<application id>&] 
           [grant=<comma-separated list of capabilities>&] 
           [revoke=<comma-separated list of capabilities>&] 
           [inherit=<comma-separated list of capabilities>] 
     <empty>
-    ----
+    ^^^^
     <empty>
     unknown client
     unknown application
@@ -289,7 +288,7 @@ Resource urls have the following three forms:
 #### About
 
     GET /about
-    ----
+    ^^^^
     { cryptographyDescriptor,
       publicKey,
       contact,
@@ -313,7 +312,7 @@ its author(s) or publisher.
 
     POST /client/register
     <public half of the client's key>
-    ----
+    ^^^^
     <client id>
     invalid key
     id hash collision
@@ -331,21 +330,21 @@ linking the client's key to the id.
 
 #### Set Quota
 
-    POST* /client/<client id>/set-quota?storage-limit=<storage limit>
+    POST* /client/<client id>/setQuota?storageLimit=<storage limit>
 
 The session must be authorized with system privileges.
 
 Sets the client's storage limit.  The storage limit is presumed to be in bytes.  It may also be
-specified in KB, MB, GB or TB.  Fractions are allowed.  All objects, keys, queues, and metadata
+specified in KB, MB, GB or TB.  Fractions are allowed.  All blocks, keys, queues, and metadata
 count against the client's quota.  Clients with zero quota or with excessive usage may not
 create new resources, and system administrators may place further restrictions.
 
 
 #### Administrative Key
 
-    POST* /client/admin-key
+    POST* /client/adminKey
     <public half of the administrative key pair>
-    ----
+    ^^^^
     <administrative application id>
     unauthorized
     invalid key
@@ -359,9 +358,9 @@ all resources owned by the client.
 
 #### Register Application Key
 
-    POST* /client/register-application
+    POST* /client/registerApplication
     <public half of the application key pair>
-    ----
+    ^^^^
     <application id>
     unauthorized
     invalid key
@@ -371,11 +370,54 @@ The default new resource capabilities for sessions associated with this applicat
 from the default new resource capabilities for general authorization sessions.
     
 
+#### Revoke Application Key
+
+    POST* /client/revokeApplication?applicationId=<application id>
+    <empty>
+    ^^^^
+    ok
+    unauthorized
+    not found
+
+Access to all resources by sessions authenticated by the given application will be immediately
+terminated, including all signal and relay connections.  No resources will be removed, but some
+may become unaccessible except by use of the administrative key.
+
+
+#### Register Device Key
+
+    POST* /client/registerDevice
+    <public half of the device key pair>
+    ^^^^
+    <device id>
+    unauthorized
+    invalid key
+    id hash collision
+
+The primary use of device keys is to provide a separate authority domain for each device a user
+owns.  This enables access to resources to be selectively granted to different devices, and allows
+a user to cancel the access of a lost device.
+    
+
+#### Revoke Device Key
+
+    POST* /client/revokeDevice?deviceId=<device id>
+    <empty>
+    ^^^^
+    ok
+    unauthorized
+    not found
+
+Access to all resources by sessions authenticated by the given device will be immediately
+terminated, including all signal and relay connections.  No resources will be removed, but some
+may become unaccessible except by use of the administrative key.
+
+
 #### Session Authentication
 
     POST* /session/new
     <empty>
-    ----
+    ^^^^
     <session id>
 
  
@@ -387,12 +429,15 @@ To sign in, the client must create a string containing its id, '#', and the sess
 compute the hash of the string, and then encrypt the hash with its private key.
 
     POST* /session/sign?
-          client-id=<client id>&
-          session-id=<session id>&
-          [application-id=<application id>&]
-          signature=<signature>
+          sessionId=<session id>&
+          clientId=<client id>&
+          clientSignature=<client signature>&
+          [applicationId=<application id>&]
+          [applicationSignature=<application signature>&]
+          [deviceId=<device id>&]
+          [deviceSignature=<device signature>]
     <empty>
-    ----
+    ^^^^
     <empty>
     invalid signature
 
@@ -403,9 +448,9 @@ then the client should respond with some indication of the failure.
 
 #### Register Queue
 
-    POST* client/register-queue?queue-id=<queue id>
+    POST* client/registerQueue?queueId=<queue id>
     <empty>
-    ----
+    ^^^^
     <empty>
     unauthorized
     not found
@@ -419,14 +464,14 @@ client's id or public key.
 #### Client Inquiry
 
     GET /client/<id>
-    ----
+    ^^^^
     { id, publicKey, publicQueue }
     not found
 
 or
 
-    GET /client?public-key=<public key>
-    ----
+    GET /client?publicKey=<public key>
+    ^^^^
     { id, publicKey, publicQueue }
     not found
 
@@ -444,43 +489,43 @@ capability to easily recover from composite operations with potentially inconsis
 states.  Care should be taken that modifications are performed in an order such that other clients
 do not compromise private data, or lose or damage data.
 
-All of the object APIs that modify stored data may optionally include a transaction parameter
+All of the block APIs that modify stored data may optionally include a transaction parameter
 
-    POST https://.../object/new?transaction=<transaction id>
+    POST https://.../block/new?transaction=<transaction id>
 
 indicating that the call should be included in the specified transaction.
 
 
 #### Begin Transaction
 
-    POST* begin-transaction?
+    POST* beginTransaction?
          [timeout=<seconds>&]
-         [hold-list=<comma delimited list of object ids>&]
-         [block-list=<comma delimited list of object ids>]
+         [holdList=<comma delimited list of block ids>&]
+         [lockList=<comma delimited list of block ids>]
     <empty>
-    ----
+    ^^^^
     <transaction id>
     unauthorized
 
 The server begins a transaction for this client.  The transaction id is returned in the response
-body, and the transaction is only valid for the session in which it was created.  This objects
+body, and the transaction is only valid for the session in which it was created.  The blocks
 specified in the hold list will be non-modifiable by other clients for the duration of the
-transaction.  The objects specified in the lock list will be neither modifiable, nor readable; the
+transaction.  The blocks specified in the lock list will be neither modifiable, nor readable; the
 server should provide an error that is distinct from unauthorized. The timeout gives the time the
 server will wait between API calls for this transaction before unilaterally rolling it back; the
 server has a minimum allowable timeout, a maximum allowable, and a default; the specified timeout
 is clamped to the server's allowable range.  A transaction is completed either by a rollback or
 commit.
 
-The client may only modify or delete files that are held or blocked by the transaction. Newly
-created files will be in the blocked state until the transaction is commited.
+The client may only modify or delete files that are held or locked by the transaction. Newly
+created files will be in the locked state until the transaction is commited.
 
 
 #### Rollback Transaction
 
     POST* /rollback?transaction=<transaction id>
     <empty>
-    ----
+    ^^^^
     <empty>
     unauthorized
     transaction already committed
@@ -497,7 +542,7 @@ cleared.
 
     POST* /commit?transaction=<transaction id>
     <empty>
-    ----
+    ^^^^
     <empty>
     unauthorized
     transaction already committed
@@ -505,45 +550,63 @@ cleared.
     no such transaction
     
 
-The server releases all of the locked objects and returns.  The transaction cookie is cleared.
+The server releases all of the locked blocks and returns.  The transaction cookie is cleared.
 
 
 
-### Objects
+### Blocks
 
-Objects are opaque binary data.  All non-public content should be encrypted, as all objects have
+Blocks are opaque binary data.  All non-public content should be encrypted, as all blocks have
 implicit global read permission.
 
 #### Capabilities
 
-Objects provide the following capabilities:
+Blocks provide the following capabilities:
 
     delete
     modify
     replace
     update
     limit
-    access-delete
-    access-modify
-    access-replace
-    access-update
-    access-limit
+    signal::delete
+    signal::modify
+    signal::replace
+    signal::update
+    signal::change
+    signal::limit
+    signal::access
+    signal
+    access::delete
+    access::modify
+    access::replace
+    access::update
+    access::limit
+    access::signal::delete
+    access::signal::modify
+    access::signal::replace
+    access::signal::update
+    access::signal::change
+    access::signal::limit
+    access::signal::access
+    access::signal
     access
 
 
 #### Standard Methods
 
-    POST* /object/new
-    POST* /object/default/access
-    POST* /object/<object id>/access
-    DELETE* /object/<object id>
+    POST*   /block/default/limit
+    POST*   /block/default/access
+    POST*   /block/new
+    DELETE* /block/<block id>
+    POST*   /block/<block id>/limit  
+    POST*   /block/<block id>/access
 
 
-#### Object Modification
+#### Block Modification
 
-    POST* /object/<object id>/modify?hash=<hash>[&transaction=<transaction id>]
+    POST* /block/<block id>/modify?hash=<hash>[&transaction=<transaction id>]
     <content>
-    ----
+    ^^^^
     <hash>
     unauthorized
     not found
@@ -551,77 +614,77 @@ Objects provide the following capabilities:
     hash mismatch
 
 
-Modification means an incremental change to an object.  The caller must provide a hash of the last
-version of the object it received from the server.  The object is replaced by the given content
-only if the given hash matches the hash of the object currently stored on the server.
+Modification means an incremental change to an block.  The caller must provide a hash of the last
+version of the block it received from the server.  The block is replaced by the given content
+only if the given hash matches the hash of the block currently stored on the server.
 
 
-#### Object Replacement
+#### Block Replacement
 
-    POST* /object/<object id>/replace[?transaction=<transaction id>]
+    POST* /block/<block id>/replace[?transaction=<transaction id>]
     <content>
-    ----
+    ^^^^
     <content>
     unauthorized
     not found
     quota exceeded
 
-Replacement replaces the content of object with the content given, returning the prior content.
+Replacement replaces the content of block with the content given, returning the prior content.
 
 
-#### Object Update
+#### Block Update
 
-    POST* /object/<object id>/update[?transaction=<transaction id>]
+    POST* /block/<block id>/update[?transaction=<transaction id>]
     <content>
-    ----
+    ^^^^
     <empty>
     unauthorized
     not found
     quota exceeded
 
-Update changes the content of the object.
+Update changes the content of the block.
 
 
-#### Object Duplication
+#### Block Duplication
 
-    POST* /object/copy/<object id>[?transaction=<transaction id>]
+    POST* /block/copy/<block id>[?transaction=<transaction id>]
     <empty>
-    ----
+    ^^^^
     <empty>
     unauthorized
     not found
     quota exceeded
 
-A client may copy an object, obtaining a new object id.  This is identical in behavior to a
+A client may copy an block, obtaining a new block id.  This is identical in behavior to a
 combination of read and create, but is much more efficient.
 
 
-#### Object Size Limit
+#### Block Size Limit
 
-    POST* /object/<object id>/limit?content-length=<content length>
+    POST* /block/<block id>/limit?contentLength=<content length>
     <empty>
-    ----
+    ^^^^
     <empty>
     unauthorized
     not found
 
 
-#### Object Default Size Limit
+#### Block Default Size Limit
 
-    POST* /object/default/limit?content-length=<content length>
+    POST* /block/default/limit?contentLength=<content length>
     <empty>
-    ----
+    ^^^^
     <empty>
     unauthorized
 
 
 ### Keys
 
-Keys are kept as a distinct type from objects because of major differences in their importance and
-access patterns.  An object might be accessed by any number of clients, and while some objects may
+Keys are kept as a distinct type from blocks because of major differences in their importance and
+access patterns.  An block might be accessed by any number of clients, and while some blocks may
 be application state, it is expected that most will be content with limited distribution:
 messages, forum posts, blog entries, etc.  A key on the other hand, is generally only accessed by
-its owner, and only infrequently, perhaps only as often as the application launches.  Objects are
+its owner, and only infrequently, perhaps only as often as the application launches.  Blocks are
 readable by everyone and available over unsecured http, while keys are (by default) readable by no
 one but the owner and require a secure connection.  Furthermore, keys are immutable and are given
 an id based a hash of their value.
@@ -631,8 +694,8 @@ an id based a hash of their value.
 
     delete
     get
-    access-delete
-    access-get
+    access::delete
+    access::get
     access
 
 
@@ -647,12 +710,12 @@ an id based a hash of their value.
 #### Retrieving a Key
 
     GET* /key/<key id>
-    ----
+    ^^^^
     <encrypted key>
     unauthorized
     not found
 
-Unlike the retrieval method for objects, this one requires HTTPS and authentication.
+Unlike the retrieval method for blocks, this one requires HTTPS and authentication.
 
 
 ### Queues
@@ -680,11 +743,11 @@ Post, read, and flush may require authentication, depending on the queue's permi
     read
     flush
     limit
-    access-delete
-    access-post
-    access-read
-    access-flush
-    access-limit
+    access::delete
+    access::post
+    access::read
+    access::flush
+    access::limit
     access
 
 
@@ -700,7 +763,7 @@ Post, read, and flush may require authentication, depending on the queue's permi
 
     POST* /queue/<queue id>
     <content>
-    ----
+    ^^^^
     <empty>
     unauthorized
     queue not found
@@ -714,10 +777,10 @@ Post, read, and flush may require authentication, depending on the queue's permi
     GET* /queue/<queue id>?
          [start=<start index>&]        
          [end=<end index>&]        
-         [start-date=<start date>&]        
-         [end-date=<end date>&]
+         [startDate=<start date>&]        
+         [endDate=<end date>&]
          [count=<count>]
-    ----
+    ^^^^
     <array of posts>
     unauthorized
     queue not found
@@ -728,11 +791,11 @@ Post, read, and flush may require authentication, depending on the queue's permi
     POST* /queue/<queue id>/flush?
           [start=<start index>&]        
           [end=<end index>&]        
-          [start-date=<start date>&]        
-          [end-date=<end date>&]
+          [startDate=<start date>&]        
+          [endDate=<end date>&]
           [count=<count>]
     <empty>
-    ----
+    ^^^^
     <array of posts>
     unauthorized
     queue not found
@@ -743,12 +806,12 @@ This is similar to reading from the queue, but the posts returned are removed fr
 #### Setting Queue Limits
 
     POST* /queue/<queue id>/limit?
-          [queue-length=<queue length>&]
-          [post-count=<post count>&]
-          [post-length=<post length>&]
-          [post-residency=<post residency>]
+          [queueLength=<queue length>&]
+          [postCount=<post count>&]
+          [postLength=<post length>&]
+          [postResidency=<post residency>]
     <empty>
-    ----
+    ^^^^
     <empty>
     unauthorized
     queue not found
@@ -786,33 +849,32 @@ listeners of connections, disconnections, message writes and reads, and other ch
     POST*   /relay/default/access
     POST*   /relay/new
     DELETE* /relay/<relay id>
-    POST*   /relay/<relay id>/drop
     POST*   /relay/<relay id>/limit  
     POST*   /relay/<relay id>/access
 
 #### Limits
 
     POST* /relay/default/limit?
-            [connections-per-client=<connections per client>&]
-            [connections-per-application=<connections per application>&]
-            [connections-per-device=<connections per device>&]
-            [message-length=<message length>&]
-            [history-length=<history length>]
+            [connectionsPerClient=<connections per client>&]
+            [connectionsPerApplication=<connections per application>&]
+            [connectionsPerDevice=<connections per device>&]
+            [messageLength=<message length>&]
+            [historyLength=<history length>]
     <empty>
-    ----
+    ^^^^
     ok
     unauthorized
     invalid value
 
 
     POST* /relay/<relay id>/limit?
-            [connections-per-client=<connections per client>&]
-            [connections-per-application=<connections per application>&]
-            [connections-per-device=<connections per device>&]
-            [message-length=<message length>&]
-            [history-length=<history length>]
+            [connectionsPerClient=<connections per client>&]
+            [connectionsPerApplication=<connections per application>&]
+            [connectionsPerDevice=<connections per device>&]
+            [messageLength=<message length>&]
+            [historyLength=<history length>]
     <empty>
-    ----
+    ^^^^
     ok
     not found
     unauthorized
@@ -830,6 +892,9 @@ re-enabled by setting the message length to a non-zero value.
 History length gives the number of messages that will be kept in the history.  The history is used
 by the reflection APIs `received` and `sent`.
 
+#### Dropping a Connection
+
+    POST* /relay/<relay id>/drop
 
 #### Reflection
 
@@ -841,9 +906,9 @@ given to new relays.
 
 
     GET* /relay/default/access?
-           [client-id=<client id>&]
-           [application-id=<application id>&]
-           [device-id=<device id>]
+           [clientId=<client id>&]
+           [applicationId=<application id>&]
+           [deviceId=<device id>]
 
 Returns the access control list given to new relays for the specified client, application, or
 device.  If none of the parameters are given, then the full access control list will be returned.
@@ -868,26 +933,26 @@ members `clientId` and optionally `applicationId` or `deviceId`.  Either one or 
 
     GET* /relay/<relay id>/received
            [count=<count>&]
-           [start-index=<start index>&]
-           [start-date=<start date>&]
-           [end-date=<end date>&]
-           [client-id=<client id>&]
-           [application-id=<application id>&]
-           [device-id=<device id>]
-    ----
+           [startIndex=<start index>&]
+           [startDate=<start date>&]
+           [endDate=<end date>&]
+           [clientId=<client id>&]
+           [applicationId=<application id>&]
+           [deviceId=<device id>]
+    ^^^^
     <message receipts>
     unauthorized
     not found
 
     GET* /relay/<relay id>/sent?
            [count=<count>&]
-           [start-index=<start index>&]
-           [start-date=<start date>&]
-           [end-date=<end date>&]
-           [client-id=<client id>&]
-           [application-id=<application id>&]
-           [device-id=<device id>]
-    ----
+           [startIndex=<start index>&]
+           [startDate=<start date>&]
+           [endDate=<end date>&]
+           [clientId=<client id>&]
+           [applicationId=<application id>&]
+           [deviceId=<device id>]
+    ^^^^
     <message sent records>
     unauthorized
     not found
@@ -897,9 +962,9 @@ recipient (`recipient`) of the message, as well as the time it was received/sent
 and a hash of the message contents (`messageHash`).
 
 To limit the number of items returned, specify a `count`.  The default is 10; to get all
-available, specify `all`.  `start-index` is used to specify the first item returned.  Normally,
+available, specify `all`.  `startIndex` is used to specify the first item returned.  Normally,
 items are returned, newest first, until count has been fulfilled.  To obtain later items, specify
-a start index.  `start-date` and `end-date` are used to request items with timestamps in a limited
+a start index.  `startDate` and `endDate` are used to request items with timestamps in a limited
 range.
 
 #### Messages
@@ -939,41 +1004,41 @@ triggering request: `subjectClientId`, `subjectApplicationId`, `subjectDeviceId`
     write
     drop
     list
-    get-clients
-    get-received
-    get-sent
-    get-limit
-    get-access
+    get::clients
+    get::received
+    get::sent
+    get::limit
+    get::access
     get
-    signal-delete
-    signal-connect
-    signal-disconnect
-    signal-received
-    signal-sent
-    signal-drop
-    signal-limit
-    signal-access
+    signal::delete
+    signal::connect
+    signal::disconnect
+    signal::received
+    signal::sent
+    signal::drop
+    signal::limit
+    signal::access
     signal
-    access-delete
-    access-read
-    access-write
-    access-drop
-    access-list
-    access-get-clients
-    access-get-received
-    access-get-sent
-    access-get-limit
-    access-get-access
-    access-get
-    access-signal-delete
-    access-signal-connect
-    access-signal-disconnect
-    access-signal-received
-    access-signal-sent
-    access-signal-drop
-    access-signal-limit
-    access-signal-access
-    access-signal
+    access::delete
+    access::read
+    access::write
+    access::drop
+    access::list
+    access::get::clients
+    access::get::received
+    access::get::sent
+    access::get::limit
+    access::get::access
+    access::get
+    access::signal::delete
+    access::signal::connect
+    access::signal::disconnect
+    access::signal::received
+    access::signal::sent
+    access::signal::drop
+    access::signal::limit
+    access::signal::access
+    access::signal
     access
 
 
