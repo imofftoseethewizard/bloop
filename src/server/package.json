@@ -1,0 +1,18 @@
+{
+  "name": "mule",
+  "subdomain": "mule",
+  "scripts": {
+    "start": "coffee ./bin/server"
+  },
+  "dependencies": {
+    "connect": "2.4.6",
+    "cookie": "0.0.4",
+    "flatiron": "0.2.8",
+    "mongodb": "1.1.7",
+    "union": "0.3.4"
+  },
+  "version": "0.0.1-19",
+  "engines": {
+    "node": "0.8.x"
+  }
+}

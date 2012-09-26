@@ -1,0 +1,16 @@
+{
+  "name": "Mule Test App",
+  "version": "0.0.1",
+  "default_locale": "en",
+  "background_page": "background.html",
+  "incognito": "split",
+  "permissions": [
+    "http://mule.nodejitsu.com",
+    "cookies"
+  ]
+}
+
+
+// Local Variables:
+// mode: js
+// end:

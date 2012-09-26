@@ -1,0 +1,25 @@
+connect = require 'connect'
+flatiron = require 'flatiron'
+mule = require '../lib/mule'
+
+app = flatiron.app
+
+app.use flatiron.plugins.http,
+  before: [
+    connect.cookieParser(),
+    mule.sessions()
+  ]
+
+app.router.path /\//, mule.root
+  db:
+    host:     process.env.MULEDB_HOST
+    port:     Number process.env.MULEDB_PORT
+    name:     process.env.MULEDB_NAME
+    user:     process.env.MULEDB_USER
+    password: process.env.MULEDB_PASSWORD
+
+app.start 8080
+
+# Local Variables:
+# mode: coffee
+# end:

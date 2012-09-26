@@ -1,84 +1,55 @@
+cookie = require 'cookie'
+util = require './util'
 
-rpc = require './rpc'
-crypto = require './crypto'
+sessions = {}
 
+exports.middleware = (options) ->
+  options = options or {}
+  key = options.key or 'sessionId'
+  path = options.path or '/'
 
-class Session
-  @serial = 1
-  @salt = String Math.random()
+  (req, res, next) ->
+    req.session = {}
 
-  @newId: () ->
-    while Store.get (id = crypto.hash @salt + (@serial++))
-      ;
-    id
+    if (req.url.indexOf path) is 0
+      res.session = req.session = sessions[req.cookies[key]] or {}
+      res.on 'header', () ->
 
-# Storage for sessions.
-# See http://http://www.senchalabs.org/connect/middleware-session.html
-#
-class Store
-  @store = {}
-  @count = 0
+        # These two headers are needed to allow cross-domain XHR.
+        # XHR must have the withCredentials flag set to true.
+        res.setHeader 'Access-Control-Allow-Credentials', 'true'
+        res.setHeader 'Access-Control-Allow-Origin', req.headers.origin or '*'
 
-  @get: (id, next) -> next @store[id]
-  @set: (id, session, next) ->
-    @count++ if not @store[id]?
-    @store[id] = session
-    next()
-
-  @destroy: (id, session, next) ->
-    @count-- if @store[id]?
-
-    delete @store[id]
-    next()
-
-  @length: (next) -> next @count
-  @clear: (next) ->
-    @store = {}
-    @count = 0
-    next()
-
-
-class Interface extends rpc.Interface
-
-  @defineMethods
-      name: 'new'
-      handler: (req, res) ->
-        @reply res, (req.session.id = Session.newId())
-    ,
-
-      name: 'sign'
-      targetRequired: true
-      requiredParameters: ['client-id', 'signature']
-      optionalParameters: ['application-id']
-      handler: (req, res) ->
-        arguments = req.rpc.arguments
-
-        clientId      = arguments['client-id']
-        applicationId = arguments['application-id']
-        sessionId     = req.rpc.target
-        signature     = arguments['signature']
-
-        client = Client.getById req.rpc.session.clientId
-
-        if applicationId?
-          text = applicationId + sessionId
-          key = client.getApplicationKey applicationId
+        if res.session.id?
+          res.setHeader 'Set-Cookie', cookie.serialize key, res.session.id,
+            path: path
         else
-          text = clientId + sessionId
-          key = client.publicKey
+          res.setHeader 'Set-Cookie', cookie.serialize key, '',
+            expires: new Date 0
+            path: path
 
-        challenge = crypto.hash text
-        hash = key and crypto.decrypt signature, key
+    next()
 
-        if sessionId isnt req.rpc.session.id or hash isnt challenge
-          @error res, 'invalid signature'
+exports.root = (server) ->
+  () ->
+    # TODO change to post after static test page created
+    @get /\/open/, () ->
+      sessionId = util.uuidgen()
+      session = id: sessionId
+      sessions[sessionId] = session
+      @res.session = session
+      @res.writeHead 200, 'Content-Type': 'application/json'
+      @res.end JSON.stringify sessionId
 
-        else
-          req.session.clientId = clientId
-          req.session.applicationId = applicationId
+    # TODO change to post after static test page created
+    @get /\/close/, () ->
+      if (sessionId = @req.session.id)?
+        delete sessions[sessionId]
+      @res.session = {}
+      @res.writeHead 200, 'Content-Type': 'application/json'
+      @res.end 'true'
 
-          @reply res, ''
 
 
-module.exports.Interface = Interface
-module.exports.Store = Store
+
+
