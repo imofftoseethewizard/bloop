@@ -1,0 +1,108 @@
+<html>
+  <head>
+    <script src="jquery.js"></script>
+    <script src="coffee-script.js"></script>
+    <script src="main.coffee" type="text/coffeescript"></script>
+    <style>
+    body {
+        font-family: arial, san-serif;
+    }
+    table {
+        width: 50em;
+        border: 1px solid gray;
+        border-radius: 3px;
+    }
+    div.static {
+        font-family: courier, monospace;
+        margin: 5pt;
+    }
+    div.button {
+        border-style: solid;
+        border-radius: 5;
+        border-width: 3;
+        margin: 5pt;
+        padding-left: 10pt;
+        padding-right: 10pt;
+        display: inline;
+        cursor: default;
+        color: #e0e0e0;
+    }
+    div.button:hover {
+        color: white;
+    }
+    div.button.disabled {
+        color: white
+    }
+    div.button.green {
+        border-color: green;
+        background: green;
+    }
+    div.button.red {
+        border-color: red;
+        background: red;
+    }
+    div.button.blue {
+        border-color: blue;
+        background: blue;
+    }
+    div.button.brown {
+        border-color: brown;
+        background: brown;
+    }
+    div.button.green.disabled {
+        border-color: lightgreen;
+        background: lightgreen;
+    }
+    div.button.red.disabled {
+        border-color: pink;
+        background: pink;
+    }
+    div.button.blue.inactive {
+        border-color: dodgerblue;
+        background: dodgerblue;
+    }
+    div.button.blue.inactive:hover {
+        border-color: blue;
+        background: blue;
+    }
+    div.button.brown.inactive {
+        border-color: sandybrown;
+        background: sandybrown;
+    }
+    div.button.brown.inactive:hover {
+        border-color: brown;
+        background: brown;
+    }
+    td {
+        padding: 5pt;
+        padding-left: 20pt;
+    }
+    td.label {
+        width: 12em;
+        font-weight: bold;
+        padding-right: 30pt;
+        background: powderblue;
+    }
+    input.radio {
+        margin: 5pt;
+    }
+    td.radio {
+        font-family: courier, monospace;
+    }
+    </style>
+  </head>
+  <body>
+    <table>
+      <tr><td class="label">Host</td>
+      <td class="radio">
+        <input type="radio" class="radio" name="host" id="host_local" value="local"><span id="local_url"></span><br>
+        <input type="radio" class="radio" name="host" id="host_remote" value="remote"><span id="remote_url"></span>
+      </tr>
+      <tr><td class="label" rowspan=2>Session</td><td><div id="sessionId" class="static">None</div></td></tr>
+      <tr><td>
+          <div id="session_open" class="button green">Open</div>
+          <div id="session_close" class="button red disabled">Close</div>
+      </td></tr>
+    </table>
+  </body>
+</html>

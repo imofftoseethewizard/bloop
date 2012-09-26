@@ -2,6 +2,7 @@ connect = require 'connect'
 flatiron = require 'flatiron'
 mule = require '../lib/mule'
 
+env = process.env
 app = flatiron.app
 
 app.use flatiron.plugins.http,
@@ -11,12 +12,13 @@ app.use flatiron.plugins.http,
   ]
 
 app.router.path /\//, mule.root
+  secure: env.NODE_ENV is 'production'
   db:
-    host:     process.env.MULEDB_HOST
-    port:     Number process.env.MULEDB_PORT
-    name:     process.env.MULEDB_NAME
-    user:     process.env.MULEDB_USER
-    password: process.env.MULEDB_PASSWORD
+    host:     env.MULEDB_HOST
+    port:     Number env.MULEDB_PORT
+    name:     env.MULEDB_NAME
+    user:     env.MULEDB_USER
+    password: env.MULEDB_PASSWORD
 
 app.start 8080
 
