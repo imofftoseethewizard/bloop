@@ -32,20 +32,7 @@ exports.middleware = (options) ->
 
 exports.root = (server) ->
 
-  secure = (fn) ->
-    if not server.options.secure
-      fn
-    else
-      (args...) ->
-        if @req.headers['x-forwarded-proto'] is 'https'
-          fn.apply this, args
-        else
-          @res.writeHead 426
-          @res.end JSON.stringify
-            type: 'HTTPS Required'
-            domain: 'none'
-            method: 'session/open'
-            parameters: {}
+  secure = util.makeHttpsRequiredDecorator server.options.secure
 
   () ->
     # TODO change to post after static test page created

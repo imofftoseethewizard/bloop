@@ -1,7 +1,9 @@
 <html>
   <head>
+    <script src="cryptico.min.js"></script>
     <script src="jquery.js"></script>
     <script src="coffee-script.js"></script>
+    <script src="util.coffee" type="text/coffeescript"></script>
     <script src="main.coffee" type="text/coffeescript"></script>
     <style>
     body {
@@ -12,7 +14,7 @@
         border: 1px solid gray;
         border-radius: 3px;
     }
-    div.static {
+    div.value {
         font-family: courier, monospace;
         margin: 5pt;
     }
@@ -26,6 +28,7 @@
         display: inline;
         cursor: default;
         color: #e0e0e0;
+        user-select: none;
     }
     div.button:hover {
         color: white;
@@ -57,21 +60,13 @@
         border-color: pink;
         background: pink;
     }
-    div.button.blue.inactive {
+    div.button.blue.disabled {
         border-color: dodgerblue;
         background: dodgerblue;
     }
-    div.button.blue.inactive:hover {
-        border-color: blue;
-        background: blue;
-    }
-    div.button.brown.inactive {
+    div.button.brown.disabled {
         border-color: sandybrown;
         background: sandybrown;
-    }
-    div.button.brown.inactive:hover {
-        border-color: brown;
-        background: brown;
     }
     td {
         padding: 5pt;
@@ -95,13 +90,22 @@
     <table>
       <tr><td class="label">Host</td>
       <td class="radio">
-        <input type="radio" class="radio" name="host" id="host_local" value="local"><span id="local_url"></span><br>
-        <input type="radio" class="radio" name="host" id="host_remote" value="remote"><span id="remote_url"></span>
+        <input type="radio" class="radio" name="host" id="localHost" value="local"><span id="localUrl"></span><br>
+        <input type="radio" class="radio" name="host" id="remoteHost" value="remote"><span id="remoteUrl"></span>
       </tr>
-      <tr><td class="label" rowspan=2>Session</td><td><div id="sessionId" class="static">None</div></td></tr>
+      <tr><td class="label" rowspan=2>Session</td><td><div id="sessionId" class="value">None</div></td></tr>
       <tr><td>
-          <div id="session_open" class="button green">Open</div>
-          <div id="session_close" class="button red disabled">Close</div>
+          <div id="openSession" class="button green">Open</div>
+          <div id="closeSession" class="button red disabled">Close</div>
+      </td></tr>
+      <tr><td class="label" rowspan=5>Domain</td><td><div id="publicKey" class="value"></div></td></tr>
+      <tr><td>
+          <div id="newDomainKey" class="button blue">New Domain Key</div>
+      </td></tr>
+      <tr><td><div id="domainId" class="value"></div></td></tr>
+      <tr><td>
+          <div id="createDomain" class="button green">Create</div>
+          <div id="authenticateDomain" class="button red">Authenticate</div>
       </td></tr>
     </table>
   </body>

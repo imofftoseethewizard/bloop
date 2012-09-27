@@ -1,3 +1,4 @@
+domain  = require './domain'
 session = require './session'
 
 class Server
@@ -28,6 +29,10 @@ class Server
     softwareVersion: '0.0.1'
     softwareOrigin: 'Bleepworks'
 
+  # 128 bits is minimum key size / 8 (bits/byte) * 4/3 for (base64 characters/byte) = 21.333...
+  validatePublicKey: (key) -> key.match /^[\w\d+/=]{21,}$/
+
+
 
 exports.sessions = session.middleware
 
@@ -35,6 +40,7 @@ exports.root = (options) ->
   server = new Server options
 
   () ->
+    @path /\/domain/,  domain.root  server
     @path /\/session/, session.root server
 
     @get /\/about/, () ->
