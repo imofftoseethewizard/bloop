@@ -15,7 +15,17 @@
         border: 1px solid gray;
         border-radius: 3px;
     }
-    div.value {
+    tr.value td {
+        font-family: courier, monospace;
+        padding: 5pt;
+    }
+    tr.heading td {
+        font-weight: bold;
+        padding: 5pt;
+        border-bottom: 1px solid gray;
+        background: #e8e8e8;
+    }
+    div.value, tr.value td {
         font-family: courier, monospace;
         margin: 5pt;
     }
@@ -94,12 +104,12 @@
         <input type="radio" class="radio" name="host" id="localHost" value="local"><span id="localUrl"></span><br>
         <input type="radio" class="radio" name="host" id="remoteHost" value="remote"><span id="remoteUrl"></span>
       </tr>
-      <tr><td class="label" rowspan=2>Session</td><td><div id="sessionId" class="value">None</div></td></tr>
+      <tr><td class="label" rowspan="2">Session</td><td><div id="sessionId" class="value">None</div></td></tr>
       <tr><td>
           <div id="openSession" class="button green">Open</div>
           <div id="closeSession" class="button red disabled">Close</div>
       </td></tr>
-      <tr><td class="label" rowspan=6>Domain</td><td><div id="publicKey" class="value"></div></td></tr>
+      <tr><td class="label" rowspan="6">Domain</td><td><div id="publicKey" class="value"></div></td></tr>
       <tr><td>
           <div id="newDomainKey" class="button blue">New Domain Key</div>
       </td></tr>
@@ -109,8 +119,8 @@
           <div id="authenticateDomain" class="button red">Authenticate</div>
       </td></tr>
       <tr><td>
-          <table id="domainList">
-            <tr><th id="domainIdColumn">Id<th id="domainCreatedColumn">Created On<th>Authorization</tr>
+          <table id="domainList" cellspacing="0">
+            <tr class="heading"><td id="domainIdColumn">Id<td id="domainCreatedColumn">Created On<td>Authorization</tr>
           </table>
       </td></tr>
       <tr><td>

@@ -156,7 +156,7 @@ exports.root = (server) ->
       (query.where 'created').lt  createdBefore if createdBefore?
 
       query.limit count
-      (query.sort orderBy) if orderBy?
+      (query.sort orderBy.split()...) if orderBy?
       query.select 'id created publicKey enabled authorization'
 
       query.exec (err, results) =>

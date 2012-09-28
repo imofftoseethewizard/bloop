@@ -49,17 +49,26 @@ update = () ->
     ($ '#createDomain').addClass 'disabled'
     ($ '#authenticateDomain').removeClass 'disabled'
 
-domainOrder = '+id'
+domainOrder = '_id increasing'
 visibleDomains = [id: '0']
 
 loadDomains = () ->
-  if domainOrder in ['+id', '-id']
+  if domainOrder in ['_id increasing', '-_id decreasing']
     options =
-      firstId: 'F'
       count: 10
       orderBy: domainOrder
-    listDomains options, (err, result) ->
-      console.log 'listing domains', err, result
+    listDomains options, (result, err) ->
+      if err?
+        console.log 'error in list domains', err, result
+      else
+        table = $('#domainList')[0]
+        tbody = table.children[0]
+        for d, i in result
+          row = $("<tr class=\"value\"><td>#{ d._id }</td><td>#{ d.created }</td><td>#{ d.authorization }</td></tr>")
+          if table.rows[i+1]?
+            tbody.replaceChild row[0], table.rows[i+1]
+          else
+            tbody.appendChild row[0]
 
 ($ document).ready () ->
   ($ '#localUrl').text LOCAL_HOST
@@ -122,6 +131,7 @@ loadDomains = () ->
         ($ '#authenticateDomain').removeClass 'disabled'
         ($ '#domainId').text result
         localStorage.domainId = result
+        loadDomains()
 
 ($ '#authenticateDomain').click () ->
   if not ($ this).hasClass 'disabled'
