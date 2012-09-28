@@ -1,4 +1,5 @@
 cookie = require 'cookie'
+
 util = require './util'
 
 sessions = {}
@@ -37,7 +38,7 @@ exports.root = (server) ->
   () ->
     # TODO change to post after static test page created
     @post /\/open/, secure () ->
-      sessionId = util.uuidgen()
+      sessionId = server.idgen()
       session = id: sessionId
       sessions[sessionId] = session
       @res.session = session

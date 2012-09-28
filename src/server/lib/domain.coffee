@@ -6,6 +6,9 @@ crypto = require './crypto'
 errors = require './errors'
 util = require './util'
 
+round = Math.round
+isInteger = (x) -> not (isNaN x) and x == round x
+
 class DomainMgr extends events.EventEmitter
   constructor: (@server) ->
     @server.once 'dbReady', () => @dbInit()
@@ -20,6 +23,7 @@ class DomainMgr extends events.EventEmitter
       ref: model
 
     schema = new mongoose.Schema
+      _id:             String
       created:         { type: Date, default: Date.now }
       enabled:         Boolean
       publicKey:       String
@@ -47,6 +51,10 @@ exports.root = (server) ->
   domainMgr.once 'modelReady', () ->
     Domain = domainMgr.model
 
+    Domain.validOrders = 'id +id -id created +created -created'.split()
+
+#    Domain.find().remove()
+
     if (publicKey = server.options.admin.publicKey)?
       Domain.findOne { publicKey: publicKey }, 'id', (err, domain) =>
         if err
@@ -55,6 +63,7 @@ exports.root = (server) ->
         else
           if not domain?
             domain = new Domain
+              _id:             server.idgen()
               enabled:         true
               publicKey:       publicKey
               authorization:   'system'
@@ -93,6 +102,7 @@ exports.root = (server) ->
           else
             if not domain?
               domain = new Domain
+                _id:             server.idgen()
                 enabled:         true
                 publicKey:       query.publicKey
                 authorization:   'none'
@@ -116,40 +126,40 @@ exports.root = (server) ->
                 @res.writeHead 200, 'Content-Type': 'application/json'
                 @res.end JSON.stringify domain.id
 
-    @post 'list', secure () ->
+    @get 'list', secure () ->
       { href, query, pathname } = url.parse @req.url, true
-      domain         = query.domain
-      count          = query.count or 20
-      firstId        = query.firstId
-      lastId         = query.lastId
-      createdAfter   = query.createdAfter
-      createdBefore  = query.createdBefore
-      orderBy        = query.orderBy
+      { domain, count, firstId, lastId, createdAfter, createdBefore, orderBy } = query
 
       # validate arguments
       #
       # domain: either a descendant of session domain, or session domain has system authorization, or nothing
-      # count: a non-negative integer
-      # firstId:
-      # lastId:
-      # createdAfter: a date
-      # createdBefore: a date
-      # orderBy: one of id +id -id created +created -created
+      #
+      if count? and (not (isInteger (count = Number count)) or count < 0)
+        return errors.InvalidValue null, @req, @res, query.count, 'Count must be a non-negative integer, if specified.'
+
+      if createdAfter? and isNaN (createdAfter = Date createdAfter)
+        return errors.InvalidValue null, @req, @res, query.createdAfter, 'createdAfter must be a valid date, if specified.'
+
+      if createdBefore? and isNaN (createdBefore = Date createdBefore)
+        return errors.InvalidValue null, @req, @res, query.createdBefore, 'createdBefore must be a valid date, if specified.'
+
+      if orderBy? and not orderBy in Domain.validOrders
+        return errors.InvalidValue null, @req, @res, query.createdBefore, 'orderBy must be must be one of [id, +id, -id, created, +created, -created], if specified.'
 
       query = Domain.find()
       query.find ancestors: new RegExp domain if domain?
 
-      (query.where 'id').gte firstId if firstId?
-      (query.where 'id').lt  lastId  if lastId?
+      (query.where '_id').gte firstId if firstId?
+      (query.where '_id').lt  lastId  if lastId?
 
       (query.where 'created').gte createdAfter  if createdAfter?
       (query.where 'created').lt  createdBefore if createdBefore?
 
       query.limit count
-      query.sort orderBy if orderBy?
+      (query.sort orderBy) if orderBy?
       query.select 'id created publicKey enabled authorization'
 
-      query.exec (err, results) ->
+      query.exec (err, results) =>
         if err
           errors.InternalError null, @req, @res, err
         else

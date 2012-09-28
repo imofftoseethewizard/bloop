@@ -1,15 +1,9 @@
-idgen = (separators...) ->
-  { round, random } = Math
+{ floor, random } = Math
 
-  randomHex4 = () -> ('0000' + (round random()*0x10000).toString 16).slice -4
-
-  parts = (randomHex4() + (s or '') for s in separators)
-  parts.push randomHex4()
-
-  parts.join ''
-
-# http://en.wikipedia.org/wiki/Universally_unique_identifier
-uuidgen = () ->  idgen '', '-', '-', '-', '-', '', ''
+idgen = (length) ->
+  a = new Uint8Array new ArrayBuffer length
+  a[i] = floor 256*random() for i in [0...length]
+  a
 
 makeHttpsRequiredDecorator = (requireHttps) ->
   secure = (fn) ->
@@ -28,6 +22,5 @@ makeHttpsRequiredDecorator = (requireHttps) ->
             parameters: {}
 
 exports.idgen = idgen
-exports.uuidgen = uuidgen
 
 exports.makeHttpsRequiredDecorator = makeHttpsRequiredDecorator

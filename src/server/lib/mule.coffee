@@ -1,8 +1,10 @@
 events = require 'events'
 mongoose = require 'mongoose'
 
+base64  = require './base64'
 domain  = require './domain'
 session = require './session'
+util    = require './util'
 
 class Server extends events.EventEmitter
 
@@ -29,6 +31,9 @@ class Server extends events.EventEmitter
 
   # 128 bits is minimum key size / 8 (bits/byte) * 4/3 for (base64 characters/byte) = 21.333...
   validatePublicKey: (key) -> key.match /^[\w\d+/=]{21,}$/
+
+  idgen: () ->
+    base64.encode util.idgen 15
 
 
 

@@ -28,9 +28,10 @@ request = (method, url, next) ->
 openSession  = (next) -> request 'POST', 'session/open',  next
 closeSession = (next) -> request 'POST', 'session/close', next
 
-createDomain = (publicKey, next) -> request 'POST', ('domain/create?' + $.param publicKey: publicKey), next
-authenticate = (domainId, next) -> request 'POST', 'domain/' + domainId + '/authenticate', next
-aboutDomain = (domainId, next) -> request 'GET', 'domain/' + domainId + '/about', next
+createDomain = (publicKey, next) -> request 'POST', 'domain/create?' + ($.param publicKey: publicKey), next
+authenticate = (domainId, next)  -> request 'POST', 'domain/' + domainId + '/authenticate', next
+aboutDomain  = (domainId, next)  -> request 'GET', 'domain/' + domainId + '/about', next
+listDomains  = (options, next)   -> request 'GET', 'domain/list?' + ($.param options), next
 
 displayKey = (key) ->
   b = blockLength = 40
@@ -38,8 +39,6 @@ displayKey = (key) ->
 
 update = () ->
   ($ (if localStorage.host is LOCAL_HOST then '#localHost' else '#remoteHost')).prop 'checked', true
-  ($ '#localUrl').text LOCAL_HOST
-  ($ '#remoteUrl').text REMOTE_HOST
   ($ '#publicKey').text displayKey localStorage.publicKey
   if not localStorage.domainId?
     ($ '#domainId').text 'None'
@@ -50,9 +49,23 @@ update = () ->
     ($ '#createDomain').addClass 'disabled'
     ($ '#authenticateDomain').removeClass 'disabled'
 
+domainOrder = '+id'
+visibleDomains = [id: '0']
 
+loadDomains = () ->
+  if domainOrder in ['+id', '-id']
+    options =
+      firstId: 'F'
+      count: 10
+      orderBy: domainOrder
+    listDomains options, (err, result) ->
+      console.log 'listing domains', err, result
 
-($ document).ready () -> update()
+($ document).ready () ->
+  ($ '#localUrl').text LOCAL_HOST
+  ($ '#remoteUrl').text REMOTE_HOST
+  update()
+  loadDomains()
 
 #
 # Sessions

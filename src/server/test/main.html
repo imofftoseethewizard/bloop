@@ -99,7 +99,7 @@
           <div id="openSession" class="button green">Open</div>
           <div id="closeSession" class="button red disabled">Close</div>
       </td></tr>
-      <tr><td class="label" rowspan=5>Domain</td><td><div id="publicKey" class="value"></div></td></tr>
+      <tr><td class="label" rowspan=6>Domain</td><td><div id="publicKey" class="value"></div></td></tr>
       <tr><td>
           <div id="newDomainKey" class="button blue">New Domain Key</div>
       </td></tr>
@@ -107,7 +107,14 @@
       <tr><td>
           <div id="createDomain" class="button green">Create</div>
           <div id="authenticateDomain" class="button red">Authenticate</div>
-          <div id="aboutDomain" class="button brown">About</div>
+      </td></tr>
+      <tr><td>
+          <table id="domainList">
+            <tr><th id="domainIdColumn">Id<th id="domainCreatedColumn">Created On<th>Authorization</tr>
+          </table>
+      </td></tr>
+      <tr><td>
+          <div id="aboutDomain" class="button brown">Details</div>
       </td></tr>
     </table>
   </body>
