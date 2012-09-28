@@ -12,15 +12,30 @@ app.use flatiron.plugins.http,
   ]
 
 app.router.path /\//, mule.root
-  secure: env.NODE_ENV is 'production'
+  secure:      env.NODE_ENV is 'production' # allow http on localhost
+
+  admin:
+    publicKey: env.MULE_ADMIN_PUBLIC_KEY
+
   db:
-    host:     env.MULEDB_HOST
-    port:     Number env.MULEDB_PORT
-    name:     env.MULEDB_NAME
-    user:     env.MULEDB_USER
-    password: env.MULEDB_PASSWORD
+    host:      env.MULE_DB_HOST
+    port:      Number env.MULE_DB_PORT
+    name:      env.MULE_DB_NAME
+    user:      env.MULE_DB_USER
+    password:  env.MULE_DB_PASSWORD
 
 app.start 8080
+
+io = require 'socket.io'
+socket = io.listen app.server
+socket.on 'connection', (client) ->
+  console.log 'Got websocket connection'
+
+  client.on 'message', (msg) ->
+    console.log 'Got message from client: ' + msg
+
+  client.broadcast.emit 'from server'
+
 
 # Local Variables:
 # mode: coffee

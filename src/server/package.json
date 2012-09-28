@@ -8,10 +8,11 @@
     "connect": "2.4.6",
     "cookie": "0.0.4",
     "flatiron": "0.2.8",
-    "mongodb": "1.1.7",
+    "mongoose": "3.2.0",
+    "socket.io": "0.9.10",
     "union": "0.3.4"
   },
-  "version": "0.0.1-20",
+  "version": "0.0.1-21",
   "engines": {
     "node": "0.8.x"
   }

@@ -1,21 +1,19 @@
+events = require 'events'
+mongoose = require 'mongoose'
+
 domain  = require './domain'
 session = require './session'
 
-class Server
+class Server extends events.EventEmitter
+
   constructor: (@options) ->
-    @authenticated = 'connecting...'
-
-    mongodb = require 'mongodb'
     db = options.db
-    @db = new mongodb.Db db.name, new mongodb.Server db.host, db.port, {}
-    @db.open (err, db_p)  =>
-      if err?
-        throw err
-
-      @db.authenticate db.user, db.password, (err, replies) =>
-        @authenticated = not err?
-
-        #You are now connected and authenticated.
+    dbUrl = 'mongodb://' + db.user + ':' + db.password + '@' + db.host + ':' + db.port + '/' + db.name
+    cx = mongoose.createConnection dbUrl
+    cx.on 'error', () -> console.log 'Unable to open database: ' + dbUrl
+    cx.once 'open', () =>
+      @db = cx
+      @emit 'dbReady'
 
   about: () ->
     cryptographyDescriptor:

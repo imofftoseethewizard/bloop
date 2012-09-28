@@ -5,7 +5,7 @@ localStorage.host or= LOCAL_HOST
 
 createDomainKey = () ->
   password = localStorage.password = util.uuidgen()
-  keypair = cryptico.generateRSAKey password, 2048
+  keypair = cryptico.generateRSAKey password, 1024
   localStorage.publicKey = cryptico.publicKeyString keypair
   delete localStorage.domainId
 
@@ -30,6 +30,7 @@ closeSession = (next) -> request 'POST', 'session/close', next
 
 createDomain = (publicKey, next) -> request 'POST', ('domain/create?' + $.param publicKey: publicKey), next
 authenticate = (domainId, next) -> request 'POST', 'domain/' + domainId + '/authenticate', next
+aboutDomain = (domainId, next) -> request 'GET', 'domain/' + domainId + '/about', next
 
 displayKey = (key) ->
   b = blockLength = 40
@@ -117,5 +118,9 @@ update = () ->
       ($ '#createDomain').removeClass 'disabled'
       ($ '#domainId').text result
 
+($ '#aboutDomain').click () ->
+  if not ($ this).hasClass 'disabled'
+    aboutDomain localStorage.domainId, (result, err) ->
+      console.log 'aboutDomain', result, err
 
 
