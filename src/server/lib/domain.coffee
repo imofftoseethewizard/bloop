@@ -168,7 +168,8 @@ exports.root = (server) ->
 
     @path /\/:domainId/, () ->
       @get 'about', secure (domainId) ->
-        Domain.findOne { id: domainId }, 'id created publicKey enabled authorization', (err, domain) =>
+        Domain.findOne { _id: domainId }, (err, domain) =>
+          console.log JSON.stringify domain
           if err
             errors.InternalError null, @req, @res, err
 
@@ -177,12 +178,12 @@ exports.root = (server) ->
               errors.NotFound null, @req, @res, domainId, 'domain'
             else
               @res.writeHead 200, 'Content-Type': 'application/json'
-              @res.end JSON.stringify
-                id:            domain.id
-                created:       domain.created
-                publicKey:     domain.publicKey
-                enabled:       domain.enabled
-                authorization: domain.authorization
+              @res.end JSON.stringify domain.toObject()
+                # id:            domain.id
+                # created:       domain.created
+                # publicKey:     domain.publicKey
+                # enabled:       domain.enabled
+                # authorization: domain.authorization
 
       @post 'authenticate', secure (domainId) ->
         @res.writeHead 200, 'Content-Type': 'application/json'

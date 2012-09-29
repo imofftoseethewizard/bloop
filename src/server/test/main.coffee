@@ -34,7 +34,7 @@ aboutDomain  = (domainId, next)  -> request 'GET', 'domain/' + domainId + '/abou
 listDomains  = (options, next)   -> request 'GET', 'domain/list?' + ($.param options), next
 
 displayKey = (key) ->
-  b = blockLength = 40
+  b = blockLength = 55
   (key.slice i, i+b for i in [0..(key.length + b)] by b).join ' '
 
 update = () ->
@@ -52,6 +52,7 @@ update = () ->
 domainOrder = '_id increasing'
 visibleDomains = [id: '0']
 
+activeRow = 0
 loadDomains = () ->
   if domainOrder in ['_id increasing', '-_id decreasing']
     options =
@@ -69,12 +70,36 @@ loadDomains = () ->
             tbody.replaceChild row[0], table.rows[i+1]
           else
             tbody.appendChild row[0]
+          row.prop 'index', i+1
+          row.prop 'domain', d
+          row.click () ->
+            activeRow = @index
+            for r, i in table.rows
+              if i == activeRow
+                $(r).addClass 'active'
+              else
+                $(r).removeClass 'active'
+            aboutDomain @domain._id, (result, err) =>
+              if err?
+                console.log 'failed to get details', @domain._id
+              else
+                showDomainDetails result
+        if activeRow == 0
+          activeRow = 1
+          ($ table.rows[1]).addClass 'active'
+        showDomainDetails table.rows[activeRow].domain
+
+showDomainDetails = (domain) ->
+  for k, v of domain
+    v = displayKey v if k is 'publicKey'
+    $('#domainDetail_' + k).text v
 
 ($ document).ready () ->
   ($ '#localUrl').text LOCAL_HOST
   ($ '#remoteUrl').text REMOTE_HOST
   update()
   loadDomains()
+
 
 #
 # Sessions
@@ -141,9 +166,7 @@ loadDomains = () ->
       ($ '#createDomain').removeClass 'disabled'
       ($ '#domainId').text result
 
-($ '#aboutDomain').click () ->
-  if not ($ this).hasClass 'disabled'
-    aboutDomain localStorage.domainId, (result, err) ->
-      console.log 'aboutDomain', result, err
+
+
 
 
