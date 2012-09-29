@@ -50,55 +50,105 @@ update = () ->
 domainOrder = '_id increasing'
 visibleDomains = [id: '0']
 
-activeRow = 0
-loadDomains = () ->
-  if domainOrder in ['_id increasing', '-_id decreasing']
+class DomainMgr
+  constructor: () ->
+    @table = null
+    @rows = []
+    @rowsById = {}
+    @active = null
+
+  onDocumentReady: () ->
+    @table = $ '#domainList'
+    @refresh()
+
+    @createBtn = $ '#createDomain'
+    @createBtn.click () =>
+      if not @createBtn.hasClass 'disabled'
+        @createBtn.addClass 'disabled'
+        defer 0, () =>
+          createDomainKey()
+          createDomain localStorage.publicKey, (result, err) =>
+            @createBtn.removeClass 'disabled'
+            if err?
+              ($ '#domainId').text 'None'
+              console.log 'createDomain error', err, result
+            else
+              ($ '#authenticateDomain').removeClass 'disabled'
+              ($ '#domainId').text result
+              localStorage.domainId = result
+              @setActiveDomain result
+              @refresh()
+
+    @authenticateBtn = $ '#authenticateDomain'
+    @authenticateBtn.click () =>
+      if not @authenticateBtn.hasClass 'disabled'
+        @authenticateBtn.addClass 'disabled'
+        authenticate localStorage.domainId, (result, err) =>
+          console.log 'authenticate', result, err
+          ($ '#createDomain').removeClass 'disabled'
+          ($ '#domainId').text result
+
+  refresh: () ->
+    @fetchDomains (domains) =>
+      table = @table[0]
+      tbody = table.children[0]
+      for d, i in domains
+        row = $("<tr class=\"value\"><td>#{ d._id }</td><td>#{ d.created }</td><td>#{ d.authorization }</td></tr>")
+        if table.rows[i+1]?
+          tbody.replaceChild row[0], table.rows[i+1]
+        else
+          tbody.appendChild row[0]
+        if d._id == @active
+          $(row).addClass 'active'
+        row.prop 'index', i+1
+        row.prop 'domain', d
+        do (d) =>
+          row.click () => @setActiveDomain d._id
+
+      @showDomainDetails @active
+
+  fetchDomains: (next) ->
     options =
       count: 10
-      orderBy: domainOrder
-    listDomains options, (result, err) ->
+      orderBy: @domainOrder
+    listDomains options, (result, err) =>
       if err?
         console.log 'error in list domains', err, result
       else
-        table = $('#domainList')[0]
-        tbody = table.children[0]
-        for d, i in result
-          row = $("<tr class=\"value\"><td>#{ d._id }</td><td>#{ d.created }</td><td>#{ d.authorization }</td></tr>")
-          if table.rows[i+1]?
-            tbody.replaceChild row[0], table.rows[i+1]
-          else
-            tbody.appendChild row[0]
-          row.prop 'index', i+1
-          row.prop 'domain', d
-          row.click () ->
-            activeRow = @index
-            for r, i in table.rows
-              if i == activeRow
-                $(r).addClass 'active'
-                $('#activeDomainId').text r.domain._id
-              else
-                $(r).removeClass 'active'
-            aboutDomain @domain._id, (result, err) =>
-              if err?
-                console.log 'failed to get details', @domain._id
-              else
-                showDomainDetails result
-        if activeRow == 0
-          activeRow = 1
-          ($ table.rows[1]).addClass 'active'
-          $('#activeDomainId').text table.rows[1].domain._id
-        showDomainDetails table.rows[activeRow].domain
+        if not @active?
+          @setActiveDomain result[0]._id
+        next result
 
-showDomainDetails = (domain) ->
-  for k, v of domain
-    v = displayKey v if k is 'publicKey'
-    $('#domainDetail_' + k).text v
+  setActiveDomain: (@active) ->
+    $('#activeDomainId').text @active
+    table = @table[0]
+    for r, i in table.rows when i > 0
+      if r.domain._id == @active
+        $(r).addClass 'active'
+      else
+        $(r).removeClass 'active'
+
+    @updateDomainDetails()
+
+  updateDomainDetails: () ->
+    aboutDomain @active, (result, err) =>
+      if err?
+        console.log 'failed to get details', @active
+      else
+        @showDomainDetails result
+
+  showDomainDetails: (domain) ->
+    for k, v of domain
+      v = displayKey v if k is 'publicKey'
+      $('#domainDetail_' + k).text v
+
+domainMgr = new DomainMgr
 
 ($ document).ready () ->
   ($ '#localUrl').text LOCAL_HOST
   ($ '#remoteUrl').text REMOTE_HOST
   update()
-  loadDomains()
+  domainMgr.onDocumentReady()
 
 
 #
@@ -129,35 +179,6 @@ showDomainDetails = (domain) ->
     closeSession () ->
       ($ '#openSession').removeClass 'disabled'
       ($ '#sessionId').text 'None'
-
-#
-# Domains
-#
-
-($ '#createDomain').click () ->
-  if not ($ this).hasClass 'disabled'
-    ($ this).addClass 'disabled'
-    defer 0, () =>
-      createDomainKey()
-      createDomain localStorage.publicKey, (result, err) =>
-        ($ this).removeClass 'disabled'
-        if err?
-          ($ '#domainId').text 'None'
-          console.log 'createDomain error', err, result
-        else
-          ($ '#authenticateDomain').removeClass 'disabled'
-          ($ '#domainId').text result
-          localStorage.domainId = result
-          loadDomains()
-
-($ '#authenticateDomain').click () ->
-  if not ($ this).hasClass 'disabled'
-    ($ this).addClass 'disabled'
-    authenticate localStorage.domainId, (result, err) ->
-      console.log 'authenticate', result, err
-      ($ '#createDomain').removeClass 'disabled'
-      ($ '#domainId').text result
-
 
 
 
