@@ -126,6 +126,36 @@ exports.root = (server) ->
                 @res.writeHead 200, 'Content-Type': 'application/json'
                 @res.end JSON.stringify domain.id
 
+    @get 'count', secure () ->
+      { href, query, pathname } = url.parse @req.url, true
+      { domain, firstId, lastId, createdAfter, createdBefore } = query
+
+      # validate arguments
+      #
+      # domain: either a descendant of session domain, or session domain has system authorization, or nothing
+      #
+      if createdAfter? and isNaN (createdAfter = Date createdAfter)
+        return errors.InvalidValue null, @req, @res, query.createdAfter, 'createdAfter must be a valid date, if specified.'
+
+      if createdBefore? and isNaN (createdBefore = Date createdBefore)
+        return errors.InvalidValue null, @req, @res, query.createdBefore, 'createdBefore must be a valid date, if specified.'
+
+      query = Domain.find()
+      query.find ancestors: new RegExp domain if domain?
+
+      (query.where '_id').gte firstId if firstId?
+      (query.where '_id').lt  lastId  if lastId?
+
+      (query.where 'created').gte createdAfter  if createdAfter?
+      (query.where 'created').lt  createdBefore if createdBefore?
+
+      query.count (err, count) =>
+        if err
+          errors.InternalError null, @req, @res, err
+        else
+          @res.writeHead 200, 'Content-Type': 'application/json'
+          @res.end JSON.stringify count
+
     @get 'list', secure () ->
       { href, query, pathname } = url.parse @req.url, true
       { domain, count, firstId, lastId, createdAfter, createdBefore, orderBy } = query

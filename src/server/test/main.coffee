@@ -31,6 +31,7 @@ createDomain  = (publicKey, next) -> request 'POST', 'domain/create?' + ($.param
 authenticate  = (domainId, next)  -> request 'POST', 'domain/' + domainId + '/authenticate', next
 aboutDomain   = (domainId, next)  -> request 'GET', 'domain/' + domainId + '/about', next
 listDomains   = (options, next)   -> request 'GET', 'domain/list?' + ($.param options), next
+countDomains  = (options, next)   -> request 'GET', 'domain/count?' + ($.param options), next
 enableDomain  = (domainId, next)  -> request 'POST', 'domain/' + domainId + '/enable', next
 disableDomain = (domainId, next)  -> request 'POST', 'domain/' + domainId + '/disable', next
 deleteDomain  = (domainId, next)  -> request 'POST', 'domain/' + domainId + '/delete', next
@@ -55,11 +56,14 @@ class DomainMgr
     @rowsById = {}
     @active = null
     @domainOrder = '_id increasing'
+    @totalDomains = 0
+    @pageLength = 10
+    @currentPage = 0
 
   onDocumentReady: () ->
     @table = $ '#domainList'
     tbody = $ 'tbody', @table
-    for i in [0...10]
+    for i in [0...@pageLength]
       tbody.append $("<tr><td>&nbsp;</td><td></td><td></td></tr>")
 
     @refresh()
@@ -78,7 +82,6 @@ class DomainMgr
             else
               ($ '#authenticateDomain').removeClass 'disabled'
               ($ '#domainId').text result
-              @setActiveDomain result
               @refresh()
 
     @authenticateBtn = $ '#authenticateDomain'
@@ -117,9 +120,27 @@ class DomainMgr
             @setActiveDomain (($ row.previousSibling).prop 'domain')._id
           @refresh()
 
+    @nextPageBtn = $ '#nextDomainPage'
+    @nextPageBtn.click () =>
+      if not @nextPageBtn.hasClass 'disabled'
+        @currentPage++
+        @refresh()
+        @prevPageBtn.removeClass 'disabled'
+
+    @prevPageBtn = $ '#prevDomainPage'
+    @prevPageBtn.click () =>
+      if not @prevPageBtn.hasClass 'disabled'
+        @currentPage--
+        if @currentPage == 0
+          @prevPageBtn.addClass 'disabled'
+        @refresh()
+        @nextPageBtn.removeClass 'disabled'
+
+
 
   refresh: () ->
     @fetchDomains (domains) =>
+      @activeRow = null
       for r, i in $ 'tr', @table when i > 0
         if i-1 >= domains.length
           ($ r).replaceWith $("<tr><td>&nbsp;</td><td></td><td></td></tr>")
@@ -136,11 +157,20 @@ class DomainMgr
           do (d) =>
             row.click () => @setActiveDomain d._id
 
+      # probably got scrolled off the list as a result of a new domain
+      if not @activeRow?
+        rows = ($ 'tr', @table).toArray()
+        while rows.length > 0 and not rows[rows.length-1].domain?
+          rows.pop()
+
+        if rows.length > 0
+          @setActiveDomain rows[rows.length-1].domain._id
+
       @updateDomainDetails()
 
   fetchDomains: (next) ->
     options =
-      count: 10
+      count: (@currentPage + 1) * @pageLength
       orderBy: @domainOrder
     listDomains options, (result, err) =>
       if err?
@@ -148,7 +178,18 @@ class DomainMgr
       else
         if not @active?
           @setActiveDomain result[0]._id
-        next result
+        next result.slice @currentPage * @pageLength
+
+    defer 500, () =>
+      countDomains { firstId: '0' }, (count, err) =>
+        if err?
+          console.log 'error in count domains', err, count
+        else
+          @totalDomains = count
+          if @totalDomains >= (@currentPage + 1) * @pageLength
+            @nextPageBtn.removeClass 'disabled'
+          else
+            @nextPageBtn.addClass 'disabled'
 
   setActiveDomain: (@active) ->
     $('#activeDomainId').text @active
@@ -175,6 +216,10 @@ class DomainMgr
         else
           @toggleEnableBtn.text 'Enable'
           @deleteBtn.removeClass 'disabled'
+
+        if domain.authorization is 'system'
+          @deleteBtn.addClass 'disabled'
+
 
 domainMgr = new DomainMgr
 
