@@ -168,8 +168,8 @@ exports.root = (server) ->
 
     @path /\/:domainId/, () ->
       @get 'about', secure (domainId) ->
-        Domain.findOne { _id: domainId }, (err, domain) =>
-          if err
+        Domain.findById domainId, (err, domain) =>
+          if err?
             errors.InternalError null, @req, @res, err
 
           else
@@ -193,21 +193,44 @@ exports.root = (server) ->
         @res.end JSON.stringify domainId
 
       @post 'delete', secure (domainId) ->
-        @res.writeHead 200, 'Content-Type': 'application/json'
-        @res.end JSON.stringify domainId
+        Domain.findById domainId, (err, domain) =>
+          if err?
+            errors.InternalError null, @req, @res, err
+
+          else if not domain?
+            errors.NotFound null, @req, @res, domainId
+
+          else
+            if domain.authorization isnt 'system'
+              domain.remove (err) =>
+                if err?
+                  errors.InternalError null, @req, @res, err
+                else
+                  @res.writeHead 200, 'Content-Type': 'application/json'
+                  @res.end JSON.stringify domainId
+            else
+              errors.NotAllowed domainId, @req, @res, 'system', 'System authority domains cannot be deleted.'
 
       @post 'disable', secure (domainId) ->
-        Domain.update { _id: domainId }, { enabled: false }, (err) =>
-          if err
+        Domain.findByIdAndUpdate domainId, { enabled: false }, (err, domain) =>
+          if err?
             errors.InternalError null, @req, @res, err
+
+          else if not domain?
+            errors.NotFound null, @req, @res, domainId
+
           else
             @res.writeHead 200, 'Content-Type': 'application/json'
             @res.end JSON.stringify domainId
 
       @post 'enable', secure (domainId) ->
-        Domain.update { _id: domainId }, { enabled: true }, (err) =>
+        Domain.findByIdAndUpdate domainId, { enabled: true }, (err, domain) =>
           if err
             errors.InternalError null, @req, @res, err
+
+          else if not domain?
+            errors.NotFound null, @req, @res, domainId
+
           else
             @res.writeHead 200, 'Content-Type': 'application/json'
             @res.end JSON.stringify domainId

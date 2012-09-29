@@ -7,7 +7,6 @@ createDomainKey = () ->
   password = localStorage.password = util.uuidgen()
   keypair = cryptico.generateRSAKey password, 1024
   localStorage.publicKey = cryptico.publicKeyString keypair
-  delete localStorage.domainId
 
 if not localStorage.publicKey? then createDomainKey()
 
@@ -34,6 +33,7 @@ aboutDomain   = (domainId, next)  -> request 'GET', 'domain/' + domainId + '/abo
 listDomains   = (options, next)   -> request 'GET', 'domain/list?' + ($.param options), next
 enableDomain  = (domainId, next)  -> request 'POST', 'domain/' + domainId + '/enable', next
 disableDomain = (domainId, next)  -> request 'POST', 'domain/' + domainId + '/disable', next
+deleteDomain  = (domainId, next)  -> request 'POST', 'domain/' + domainId + '/delete', next
 
 displayKey = (key) ->
   b = blockLength = 55
@@ -42,12 +42,8 @@ displayKey = (key) ->
 update = () ->
   ($ (if localStorage.host is LOCAL_HOST then '#localHost' else '#remoteHost')).prop 'checked', true
   ($ '#publicKey').text displayKey localStorage.publicKey
-  if not localStorage.domainId?
-    ($ '#domainId').text 'None'
-    ($ '#authenticateDomain').addClass 'disabled'
-  else
-    ($ '#domainId').text localStorage.domainId
-    ($ '#authenticateDomain').removeClass 'disabled'
+  ($ '#domainId').text 'None'
+  ($ '#authenticateDomain').addClass 'disabled'
 
 domainOrder = '_id increasing'
 visibleDomains = [id: '0']
@@ -58,9 +54,14 @@ class DomainMgr
     @rows = []
     @rowsById = {}
     @active = null
+    @domainOrder = '_id increasing'
 
   onDocumentReady: () ->
     @table = $ '#domainList'
+    tbody = $ 'tbody', @table
+    for i in [0...10]
+      tbody.append $("<tr><td>&nbsp;</td><td></td><td></td></tr>")
+
     @refresh()
 
     @createBtn = $ '#createDomain'
@@ -77,7 +78,6 @@ class DomainMgr
             else
               ($ '#authenticateDomain').removeClass 'disabled'
               ($ '#domainId').text result
-              localStorage.domainId = result
               @setActiveDomain result
               @refresh()
 
@@ -85,7 +85,7 @@ class DomainMgr
     @authenticateBtn.click () =>
       if not @authenticateBtn.hasClass 'disabled'
         @authenticateBtn.addClass 'disabled'
-        authenticate localStorage.domainId, (result, err) =>
+        authenticate @active, (result, err) =>
           console.log 'authenticate', result, err
           ($ '#createDomain').removeClass 'disabled'
           ($ '#domainId').text result
@@ -107,27 +107,36 @@ class DomainMgr
           @activeRow.removeClass 'disabled'
 
     @deleteBtn = $ '#deleteDomain'
+    @deleteBtn.click () =>
+      if not @deleteBtn.hasClass 'disabled'
+        deleteDomain @active, () =>
+          row = @activeRow[0]
+          if row.nextSibling? and row.nextSibling.domain?
+            @setActiveDomain (($ row.nextSibling).prop 'domain')._id
+          else if row.previousSibling?
+            @setActiveDomain (($ row.previousSibling).prop 'domain')._id
+          @refresh()
+
 
   refresh: () ->
     @fetchDomains (domains) =>
-      table = @table[0]
-      tbody = table.children[0]
-      for d, i in domains
-        row = $("<tr class=\"value\"><td>#{ d._id }</td><td>#{ d.created }</td><td>#{ d.authorization }</td></tr>")
-        if table.rows[i+1]?
-          tbody.replaceChild row[0], table.rows[i+1]
+      for r, i in $ 'tr', @table when i > 0
+        if i-1 >= domains.length
+          ($ r).replaceWith $("<tr><td>&nbsp;</td><td></td><td></td></tr>")
         else
-          tbody.appendChild row[0]
-        if d._id == @active
-          $(row).addClass 'active'
-        if not d.enabled
-          $(row).addClass 'disabled'
-        row.prop 'index', i+1
-        row.prop 'domain', d
-        do (d) =>
-          row.click () => @setActiveDomain d._id
+          d = domains[i-1]
+          row = $("<tr class=\"value\"><td>#{ d._id }</td><td>#{ d.created }</td><td>#{ d.authorization }</td></tr>")
+          ($ r).replaceWith row
+          if d._id == @active
+            row.addClass 'active'
+            @activeRow = row
+          if not d.enabled
+            row.addClass 'disabled'
+          row.prop 'domain', d
+          do (d) =>
+            row.click () => @setActiveDomain d._id
 
-      @updateDomainDetails @active
+      @updateDomainDetails()
 
   fetchDomains: (next) ->
     options =
@@ -143,8 +152,7 @@ class DomainMgr
 
   setActiveDomain: (@active) ->
     $('#activeDomainId').text @active
-    table = @table[0]
-    for r, i in table.rows when i > 0
+    for r, i in $ 'tr', @table when i > 0 and r.domain?
       if r.domain._id == @active
         @activeRow = $(r)
         @activeRow.addClass 'active'

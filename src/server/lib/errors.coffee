@@ -3,6 +3,7 @@ url = require 'url'
 errors = [
   [400, 'Internal Error'],
   [400, 'Invalid Value'],
+  [403, 'Not Allowed'],
   [404, 'Not Found'],
   [400, 'Parameter Missing'] ]
 
