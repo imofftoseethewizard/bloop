@@ -42,11 +42,9 @@ update = () ->
   ($ '#publicKey').text displayKey localStorage.publicKey
   if not localStorage.domainId?
     ($ '#domainId').text 'None'
-    ($ '#createDomain').removeClass 'disabled'
     ($ '#authenticateDomain').addClass 'disabled'
   else
     ($ '#domainId').text localStorage.domainId
-    ($ '#createDomain').addClass 'disabled'
     ($ '#authenticateDomain').removeClass 'disabled'
 
 domainOrder = '_id increasing'
@@ -77,6 +75,7 @@ loadDomains = () ->
             for r, i in table.rows
               if i == activeRow
                 $(r).addClass 'active'
+                $('#activeDomainId').text r.domain._id
               else
                 $(r).removeClass 'active'
             aboutDomain @domain._id, (result, err) =>
@@ -87,6 +86,7 @@ loadDomains = () ->
         if activeRow == 0
           activeRow = 1
           ($ table.rows[1]).addClass 'active'
+          $('#activeDomainId').text table.rows[1].domain._id
         showDomainDetails table.rows[activeRow].domain
 
 showDomainDetails = (domain) ->
@@ -134,29 +134,21 @@ showDomainDetails = (domain) ->
 # Domains
 #
 
-($ '#newDomainKey').click () ->
+($ '#createDomain').click () ->
   if not ($ this).hasClass 'disabled'
     ($ this).addClass 'disabled'
     defer 0, () =>
       createDomainKey()
-      ($ this).removeClass 'disabled'
-      ($ '#createDomain').removeClass 'disabled'
-      ($ '#authenticateDomain').addClass 'disabled'
-      update()
-
-($ '#createDomain').click () ->
-  if not ($ this).hasClass 'disabled'
-    ($ this).addClass 'disabled'
-    createDomain localStorage.publicKey, (result, err) =>
-      if err?
+      createDomain localStorage.publicKey, (result, err) =>
         ($ this).removeClass 'disabled'
-        ($ '#domainId').text 'None'
-        console.log 'createDomain error', err, result
-      else
-        ($ '#authenticateDomain').removeClass 'disabled'
-        ($ '#domainId').text result
-        localStorage.domainId = result
-        loadDomains()
+        if err?
+          ($ '#domainId').text 'None'
+          console.log 'createDomain error', err, result
+        else
+          ($ '#authenticateDomain').removeClass 'disabled'
+          ($ '#domainId').text result
+          localStorage.domainId = result
+          loadDomains()
 
 ($ '#authenticateDomain').click () ->
   if not ($ this).hasClass 'disabled'

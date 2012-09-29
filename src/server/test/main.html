@@ -15,7 +15,7 @@
         border: 1px solid gray;
         border-radius: 3px;
     }
-    tr.value td, td.value span {
+    tr.value td, td.value span, span.value, td.value div {
         font-family: courier, monospace;
         padding: 5pt;
         overflow: hidden;
@@ -117,6 +117,8 @@
       <tr><td>
           <div id="openSession" class="button green">Open</div>
           <div id="closeSession" class="button red disabled">Close</div>
+          <div id="authenticateDomain" class="button blue">Authenticate</div>
+          <span id="activeDomainId" class="value"></span>
       </td></tr>
       <tr><td class="label" rowspan="6">Domain</td><td>
           <table id="domainList" cellspacing="0">
@@ -124,14 +126,16 @@
           </table>
       </td></tr>
       <tr><td>
-          <div id="authenticateDomain" class="button red">Authenticate</div>
+          <div id="prevDomainPage" class="button blue" style="float: left">Previous Page</div>
+          <div id="nextDomainPage" class="button blue" style="float: left">Next Page</div>
+          <div id="createDomain" class="button green" style="float: right">Create New Domain</div>
       </td></tr>
       <tr><td>
           <table id="domainDetails" cellspacing="0">
             <tr><td class="heading left">_id</td><td class="value"><span id="domainDetail__id"></span></td></tr>
             <tr><td class="heading left">created</td><td class="value"><span id="domainDetail_created"></span></td></tr>
             <tr><td class="heading left">enabled</td><td class="value"><span id="domainDetail_enabled"></span></td></tr>
-            <tr><td class="heading left">publicKey</td><td class="value"><span id="domainDetail_publicKey"></span></td></tr>
+            <tr><td class="heading left">publicKey</td><td class="value"><div id="domainDetail_publicKey"></div></td></tr>
             <tr><td class="heading left">authorization</td><td class="value"><span id="domainDetail_authorization"></span></td></tr>
             <tr><td class="heading left">parent</td><td class="value"><span id="domainDetail_parent"></span></td></tr>
             <tr><td class="heading left">children</td><td class="value"><span id="domainDetail_children"></span></td></tr>
@@ -142,14 +146,6 @@
             <tr><td class="heading left">maxConnections</td><td class="value"><span id="domainDetail_maxConnections"></span></td></tr>
             <tr><td class="heading left">maxSubdomains</td><td class="value"><span id="domainDetail_maxSubdomains"></span></td></tr>
           </table>
-      </td></tr>
-      <tr><td>
-          <div id="publicKey" class="value"></div>
-      </td></tr>
-      <tr><td><div id="domainId" class="value"></div></td></tr>
-      <tr><td>
-          <div id="newDomainKey" class="button blue">New Domain Key</div>
-          <div id="createDomain" class="button green">Create</div>
       </td></tr>
     </table>
   </body>

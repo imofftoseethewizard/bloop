@@ -169,7 +169,6 @@ exports.root = (server) ->
     @path /\/:domainId/, () ->
       @get 'about', secure (domainId) ->
         Domain.findOne { _id: domainId }, (err, domain) =>
-          console.log JSON.stringify domain
           if err
             errors.InternalError null, @req, @res, err
 
