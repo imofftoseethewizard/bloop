@@ -197,12 +197,20 @@ exports.root = (server) ->
         @res.end JSON.stringify domainId
 
       @post 'disable', secure (domainId) ->
-        @res.writeHead 200, 'Content-Type': 'application/json'
-        @res.end JSON.stringify domainId
+        Domain.update { _id: domainId }, { enabled: false }, (err) =>
+          if err
+            errors.InternalError null, @req, @res, err
+          else
+            @res.writeHead 200, 'Content-Type': 'application/json'
+            @res.end JSON.stringify domainId
 
       @post 'enable', secure (domainId) ->
-        @res.writeHead 200, 'Content-Type': 'application/json'
-        @res.end JSON.stringify domainId
+        Domain.update { _id: domainId }, { enabled: true }, (err) =>
+          if err
+            errors.InternalError null, @req, @res, err
+          else
+            @res.writeHead 200, 'Content-Type': 'application/json'
+            @res.end JSON.stringify domainId
 
       @post 'revoke', secure (domainId) ->
         @res.writeHead 200, 'Content-Type': 'application/json'

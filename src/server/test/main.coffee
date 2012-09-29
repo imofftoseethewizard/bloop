@@ -28,10 +28,12 @@ request = (method, url, next) ->
 openSession  = (next) -> request 'POST', 'session/open',  next
 closeSession = (next) -> request 'POST', 'session/close', next
 
-createDomain = (publicKey, next) -> request 'POST', 'domain/create?' + ($.param publicKey: publicKey), next
-authenticate = (domainId, next)  -> request 'POST', 'domain/' + domainId + '/authenticate', next
-aboutDomain  = (domainId, next)  -> request 'GET', 'domain/' + domainId + '/about', next
-listDomains  = (options, next)   -> request 'GET', 'domain/list?' + ($.param options), next
+createDomain  = (publicKey, next) -> request 'POST', 'domain/create?' + ($.param publicKey: publicKey), next
+authenticate  = (domainId, next)  -> request 'POST', 'domain/' + domainId + '/authenticate', next
+aboutDomain   = (domainId, next)  -> request 'GET', 'domain/' + domainId + '/about', next
+listDomains   = (options, next)   -> request 'GET', 'domain/list?' + ($.param options), next
+enableDomain  = (domainId, next)  -> request 'POST', 'domain/' + domainId + '/enable', next
+disableDomain = (domainId, next)  -> request 'POST', 'domain/' + domainId + '/disable', next
 
 displayKey = (key) ->
   b = blockLength = 55
@@ -88,6 +90,24 @@ class DomainMgr
           ($ '#createDomain').removeClass 'disabled'
           ($ '#domainId').text result
 
+    @toggleEnableBtn = $ '#toggleEnableDomain'
+    @toggleEnableBtn.click () =>
+      if @toggleEnableBtn.text() is 'Disable'
+        @toggleEnableBtn.text 'Enable'
+        @deleteBtn.removeClass 'disabled'
+        disableDomain @active, () =>
+          @updateDomainDetails()
+          @activeRow.addClass 'disabled'
+
+      else
+        @toggleEnableBtn.text 'Disable'
+        @deleteBtn.addClass 'disabled'
+        enableDomain @active, () =>
+          @updateDomainDetails()
+          @activeRow.removeClass 'disabled'
+
+    @deleteBtn = $ '#deleteDomain'
+
   refresh: () ->
     @fetchDomains (domains) =>
       table = @table[0]
@@ -100,12 +120,14 @@ class DomainMgr
           tbody.appendChild row[0]
         if d._id == @active
           $(row).addClass 'active'
+        if not d.enabled
+          $(row).addClass 'disabled'
         row.prop 'index', i+1
         row.prop 'domain', d
         do (d) =>
           row.click () => @setActiveDomain d._id
 
-      @showDomainDetails @active
+      @updateDomainDetails @active
 
   fetchDomains: (next) ->
     options =
@@ -124,23 +146,27 @@ class DomainMgr
     table = @table[0]
     for r, i in table.rows when i > 0
       if r.domain._id == @active
-        $(r).addClass 'active'
+        @activeRow = $(r)
+        @activeRow.addClass 'active'
       else
         $(r).removeClass 'active'
 
     @updateDomainDetails()
 
   updateDomainDetails: () ->
-    aboutDomain @active, (result, err) =>
+    aboutDomain @active, (domain, err) =>
       if err?
         console.log 'failed to get details', @active
       else
-        @showDomainDetails result
-
-  showDomainDetails: (domain) ->
-    for k, v of domain
-      v = displayKey v if k is 'publicKey'
-      $('#domainDetail_' + k).text v
+        for k, v of domain
+          v = displayKey v if k is 'publicKey'
+          $('#domainDetail_' + k).text v
+        if domain.enabled
+          @toggleEnableBtn.text 'Disable'
+          @deleteBtn.addClass 'disabled'
+        else
+          @toggleEnableBtn.text 'Enable'
+          @deleteBtn.removeClass 'disabled'
 
 domainMgr = new DomainMgr
 
