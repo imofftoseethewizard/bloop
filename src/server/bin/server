@@ -8,6 +8,7 @@ app = flatiron.app
 app.use flatiron.plugins.http,
   before: [
     connect.cookieParser(),
+#    connect.bodyParser(),
     mule.sessions()
   ]
 

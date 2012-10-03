@@ -1,56 +1,144 @@
 REMOTE_HOST = 'https://mule.nodejitsu.com/'
 LOCAL_HOST = 'http://localhost:8080/'
 
-localStorage.host or= LOCAL_HOST
-
-createDomainKey = () ->
-  password = localStorage.password = util.uuidgen()
-  keypair = cryptico.generateRSAKey password, 1024
-  localStorage.publicKey = cryptico.publicKeyString keypair
-
-if not localStorage.publicKey? then createDomainKey()
-
 defer = (d, fn) -> setTimeout fn, d
 
-request = (method, url, next) ->
+request = (method, url, data, next) ->
+  if data?
+    console.log 'request data', JSON.stringify data if data?
   $.ajax
     type: method
     url: localStorage.host + url
     crossDomain: true
     dataType: 'json'
+    data: data if data?
     xhrFields:
       withCredentials: true
 
     success: (data, status, xhr) -> next data
     error: (xhr, status, err) ->    next (JSON.parse xhr.responseText), err
 
-openSession  = (next) -> request 'POST', 'session/open',  next
-closeSession = (next) -> request 'POST', 'session/close', next
+openSession  = (next)        -> request 'POST', 'session/open',  undefined, next
+closeSession = (next)        -> request 'POST', 'session/close', undefined, next
+authenticate  = (doc, next)  -> request 'POST', 'session/authenticate', doc, next
 
-createDomain  = (publicKey, next) -> request 'POST', 'domain/create?' + ($.param publicKey: publicKey), next
-authenticate  = (domainId, next)  -> request 'POST', 'domain/' + domainId + '/authenticate', next
-aboutDomain   = (domainId, next)  -> request 'GET', 'domain/' + domainId + '/about', next
-listDomains   = (options, next)   -> request 'GET', 'domain/list?' + ($.param options), next
-countDomains  = (options, next)   -> request 'GET', 'domain/count?' + ($.param options), next
-enableDomain  = (domainId, next)  -> request 'POST', 'domain/' + domainId + '/enable', next
-disableDomain = (domainId, next)  -> request 'POST', 'domain/' + domainId + '/disable', next
-deleteDomain  = (domainId, next)  -> request 'POST', 'domain/' + domainId + '/delete', next
+createDomain  = (publicKey, next) -> request 'POST', 'domain/create?' + ($.param publicKey: publicKey), undefined, next
+aboutDomain   = (domainId, next)  -> request 'GET', 'domain/' + domainId + '/about', undefined, next
+listDomains   = (options, next)   -> request 'GET', 'domain/list?' + ($.param options), undefined, next
+countDomains  = (options, next)   -> request 'GET', 'domain/count?' + ($.param options), undefined, next
+enableDomain  = (domainId, next)  -> request 'POST', 'domain/' + domainId + '/enable', undefined, next
+disableDomain = (domainId, next)  -> request 'POST', 'domain/' + domainId + '/disable', undefined, next
+deleteDomain  = (domainId, next)  -> request 'POST', 'domain/' + domainId + '/delete', undefined, next
+
 
 displayKey = (key) ->
   b = blockLength = 55
   (key.slice i, i+b for i in [0..(key.length + b)] by b).join ' '
 
-update = () ->
-  ($ (if localStorage.host is LOCAL_HOST then '#localHost' else '#remoteHost')).prop 'checked', true
-  ($ '#publicKey').text displayKey localStorage.publicKey
-  ($ '#domainId').text 'None'
-  ($ '#authenticateDomain').addClass 'disabled'
 
-domainOrder = '_id increasing'
-visibleDomains = [id: '0']
+savePassword = (domainId, password) ->
+  passwords = JSON.parse localStorage.passwords
+  passwords[domainId] = password
+  localStorage.passwords = JSON.stringify passwords
 
-class DomainMgr
+getPassword = (domainId) -> (JSON.parse localStorage.passwords)[domainId]
+
+#
+# Hosts
+#
+
+class HostMgr
   constructor: () ->
+    HostMgr.instance = this
+    localStorage.host or= LOCAL_HOST
+    ($ document).ready () => @onDocumentReady()
+
+  onDocumentReady: () ->
+    ($ (if localStorage.host is LOCAL_HOST then '#localHost' else '#remoteHost')).prop 'checked', true
+    ($ '#localUrl').text LOCAL_HOST
+    ($ '#remoteUrl').text REMOTE_HOST
+
+    ($ '[type=radio]').change () ->
+      localStorage.host = (if @id is 'localHost' then LOCAL_HOST else REMOTE_HOST)
+      SessionMgr.instance.close()
+
+#
+# Sessions
+#
+
+class SessionMgr
+  constructor: () ->
+    SessionMgr.instance = this
+    ($ document).ready () => @onDocumentReady()
+
+  onDocumentReady: () ->
+    @sessionIdField = $ '#sessionId'
+    @openSessionBtn = $ '#openSession'
+    @openSessionBtn.click () =>
+      if not @openSessionBtn.hasClass 'disabled'
+        @openSessionBtn.addClass 'disabled'
+        openSession (result, err) =>
+          if err?
+            @openSessionBtn.removeClass 'disabled'
+            @sessionIdField.text 'None'
+            console.log 'openSession error', err, result
+          else
+            @session = result
+            @closeSessionBtn.removeClass 'disabled'
+            @sessionIdField.text result
+
+    @closeSessionBtn = $ '#closeSession'
+    @closeSessionBtn.click () =>
+      if not @closeSessionBtn.hasClass 'disabled'
+        @close()
+
+    @authenticateBtn = $ '#authenticateDomain'
+    @authenticateBtn.click () =>
+      if not @authenticateBtn.hasClass 'disabled'
+        @authenticateBtn.addClass 'disabled'
+        # get key values from localstorage and recreate key structure
+        key = 'TODO' # TODO: replace cryptico.generateRSAKey (getPassword @activeDomain), 1024
+        content = JSON.stringify
+          session: @session
+          domain:  @activeDomain
+          tick:    (new Date).getTime()
+
+        doc =
+          guarantor: @activeDomain,
+          content:   content
+          signature: 'TODO' #TODO: SHA256 then private encrypt content
+
+        authenticate doc, (result, err) =>
+          console.log 'authenticate', result, err
+          ($ '#createDomain').removeClass 'disabled'
+
+    defer 100, () =>
+      @activeDomain = DomainMgr.instance.active
+      @updateAuthenticateEnable()
+
+      DomainMgr.instance.on 'activeDomainChanged', (@activeDomain) =>
+        @updateAuthenticateEnable()
+
+  updateAuthenticateEnable: () ->
+    if (getPassword @activeDomain)?
+      @authenticateBtn.removeClass 'disabled'
+    else
+      @authenticateBtn.addClass 'disabled'
+
+  close: () ->
+    @closeSessionBtn.addClass 'disabled'
+    closeSession () =>
+      @openSessionBtn.removeClass 'disabled'
+      @sessionIdField.text 'None'
+
+
+
+
+class DomainMgr extends EventEmitter
+  constructor: () ->
+    DomainMgr.instance = this
+    localStorage.passwords or= '{}'
+
     @table = null
     @rows = []
     @rowsById = {}
@@ -60,7 +148,10 @@ class DomainMgr
     @pageLength = 10
     @currentPage = 0
 
+    ($ document).ready () => @onDocumentReady()
+
   onDocumentReady: () ->
+
     @table = $ '#domainList'
     tbody = $ 'tbody', @table
     for i in [0...@pageLength]
@@ -73,25 +164,16 @@ class DomainMgr
       if not @createBtn.hasClass 'disabled'
         @createBtn.addClass 'disabled'
         defer 0, () =>
-          createDomainKey()
-          createDomain localStorage.publicKey, (result, err) =>
+          password = util.uuidgen()
+          keypair = #TODO cryptico.generateRSAKey password, 1024
+          publicKey = # TODO cryptico.publicKeyString keypair
+          createDomain publicKey, (domainId, err) =>
             @createBtn.removeClass 'disabled'
             if err?
-              ($ '#domainId').text 'None'
               console.log 'createDomain error', err, result
             else
-              ($ '#authenticateDomain').removeClass 'disabled'
-              ($ '#domainId').text result
+              savePassword domainId, password
               @refresh()
-
-    @authenticateBtn = $ '#authenticateDomain'
-    @authenticateBtn.click () =>
-      if not @authenticateBtn.hasClass 'disabled'
-        @authenticateBtn.addClass 'disabled'
-        authenticate @active, (result, err) =>
-          console.log 'authenticate', result, err
-          ($ '#createDomain').removeClass 'disabled'
-          ($ '#domainId').text result
 
     @toggleEnableBtn = $ '#toggleEnableDomain'
     @toggleEnableBtn.click () =>
@@ -200,6 +282,7 @@ class DomainMgr
       else
         $(r).removeClass 'active'
 
+    @emit 'activeDomainChanged', @active
     @updateDomainDetails()
 
   updateDomainDetails: () ->
@@ -221,44 +304,13 @@ class DomainMgr
           @deleteBtn.addClass 'disabled'
 
 
-domainMgr = new DomainMgr
+new HostMgr
+new SessionMgr
+new DomainMgr
 
-($ document).ready () ->
-  ($ '#localUrl').text LOCAL_HOST
-  ($ '#remoteUrl').text REMOTE_HOST
-  update()
-  domainMgr.onDocumentReady()
-
-
-#
-# Sessions
-#
-
-($ '[type=radio]').change () ->
-  localStorage.host = (if @id is 'localHost' then LOCAL_HOST else REMOTE_HOST)
-  ($ '#openSession').removeClass 'disabled'
-  ($ '#closeSession').addClass 'disabled'
-  ($ '#sessionId').text 'None'
-
-($ '#openSession').click () ->
-  if not ($ this).hasClass 'disabled'
-    ($ this).addClass 'disabled'
-    openSession (result, err) =>
-      if err?
-        ($ this).removeClass 'disabled'
-        ($ '#sessionId').text 'None'
-        console.log 'openSession error', err, result
-      else
-        ($ '#closeSession').removeClass 'disabled'
-        ($ '#sessionId').text result
-
-($ '#closeSession').click () ->
-  if not ($ this).hasClass 'disabled'
-    ($ this).addClass 'disabled'
-    closeSession () ->
-      ($ '#openSession').removeClass 'disabled'
-      ($ '#sessionId').text 'None'
-
+window.hostMgr = HostMgr.instance
+window.sessionMgr = SessionMgr.instance
+window.domainMgr = DomainMgr.instance
 
 
 

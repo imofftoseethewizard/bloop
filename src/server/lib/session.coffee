@@ -36,7 +36,6 @@ exports.root = (server) ->
   secure = util.makeHttpsRequiredDecorator server.options.secure
 
   () ->
-    # TODO change to post after static test page created
     @post /\/open/, secure () ->
       sessionId = server.idgen()
       session = id: sessionId
@@ -45,7 +44,11 @@ exports.root = (server) ->
       @res.writeHead 200, 'Content-Type': 'application/json'
       @res.end JSON.stringify sessionId
 
-    # TODO change to post after static test page created
+    @post 'authenticate', secure () ->
+      console.log 'authenticating session', @req.body
+      @res.writeHead 200, 'Content-Type': 'application/json'
+      @res.end 'true'
+
     @post /\/close/, secure () ->
       if (sessionId = @req.session.id)?
         delete sessions[sessionId]

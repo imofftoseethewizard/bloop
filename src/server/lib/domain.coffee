@@ -202,21 +202,17 @@ exports.root = (server) ->
           if err?
             errors.InternalError null, @req, @res, err
 
-          else
-            if not domain?
-              errors.NotFound null, @req, @res, domainId, 'domain'
-            else
-              @res.writeHead 200, 'Content-Type': 'application/json'
-              @res.end JSON.stringify domain.toObject()
-                # id:            domain.id
-                # created:       domain.created
-                # publicKey:     domain.publicKey
-                # enabled:       domain.enabled
-                # authorization: domain.authorization
+          else if not domain?
+            errors.NotFound null, @req, @res, domainId, 'domain'
 
-      @post 'authenticate', secure (domainId) ->
-        @res.writeHead 200, 'Content-Type': 'application/json'
-        @res.end JSON.stringify domainId
+          else
+            @res.writeHead 200, 'Content-Type': 'application/json'
+            @res.end JSON.stringify domain.toObject()
+              # id:            domain.id
+              # created:       domain.created
+              # publicKey:     domain.publicKey
+              # enabled:       domain.enabled
+              # authorization: domain.authorization
 
       @post 'authorize', secure (domainId) ->
         @res.writeHead 200, 'Content-Type': 'application/json'
