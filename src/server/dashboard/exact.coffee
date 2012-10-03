@@ -30,8 +30,6 @@ digitMask  = (1 << logBase) - 1         # used to mask of the bits that comprise
                                         # used for sign-extension of empty digits during 2's comp
                                         # operation.
 
-signMask   = 0x8000
-
 # Exact numbers.  So-called because in the intended range of their use (very large integers for
 # cryptography), floating point numbers are inexact.  It's two fewer syllables than BigInteger,
 # and not such a phonetic mess as BigNum.
@@ -41,7 +39,7 @@ class Exact
   # large size.  Below that it is just as fast or faster (low overhead) to use the naive n^2
   # method.  This value sets the minimum msb that both operands must have for the K-multiplication
   # algorithm to continue.
-  @KaratsubaThresholdBits: 7*logBase
+  @KaratsubaThresholdBits: 3*logBase
 
   Zeros = new Uint8Array 10240
   _zeros = (k) -> Array.prototype.slice.call Zeros, 0, k
@@ -60,24 +58,14 @@ class Exact
     x.size = ceil bits / logBase
     x.digits = _zeros x.size
 
-  # Returns the sign of the number.
-  _sign = (x) -> 1 - ((x.digits[x.size-1] & signMask) >> 14)
-
-  # Sets the sign bit. A value of 0 or more is considered positive.
-  _setSign = (x, s) ->
-    if s >= 0
-      x.digits[x.size-1] &= ~signMask
-    else
-      x.digits[x.size-1] |= signMask
+  _negate = (x) ->
+    x.sign *= -1
     x
-
-  # Negation
-  _negate = (x) -> _setSign x, -_sign x
 
   # Computes the index of most significant bit set.
   _msb = (x) ->
     j = x.size-1
-    while (d = x.digits[j] & digitMask) == 0 and j > 0
+    while (d = x.digits[j]) == 0 and j > 0
       j--
 
     if d == 0
@@ -88,8 +76,8 @@ class Exact
   # Converts the exact number into a Number.
   _value = (x) ->
     v = 0
-    v += (x.digits[j] & digitMask) * (pow 2, j*logBase) for j in [0...x.size]
-    v * _sign x
+    v += x.digits[j] * (pow 2, j*logBase) for j in [0...x.size]
+    x.sign * v
 
   # Performs addition. z = x + y or x += y
   # If the third argument is not present, then this function uses its first
@@ -98,14 +86,14 @@ class Exact
     z or= x
     carry = 0
     for j in [0...z.size]
-      x_j = x.digits[j] & digitMask
-      y_j = y.digits[j] & digitMask
+      x_j = x.digits[j] or 0
+      y_j = y.digits[j] or 0
 
       z_j = x_j + y_j + carry
       z.digits[j] = z_j & digitMask
-      carry = (z_j & signMask) >> logBase
+      carry = z_j >> logBase
 
-    _setSign z, _sign x
+    z.sign = x.sign
     z.msb = _msb z
     z
 
@@ -118,8 +106,8 @@ class Exact
     else
       carry = 0
       for j in [0...z.size]
-        x_j = x.digits[j] & digitMask
-        y_j = y.digits[j] & digitMask
+        x_j = x.digits[j] or 0
+        y_j = y.digits[j] or 0
         z_j = x_j - y_j + carry
         if z_j < 0
           carry = -1
@@ -134,10 +122,10 @@ class Exact
   # Perform basic multiplication: z = x * y.
   _mul = (x, y, z) ->
     for i in [0...x.size]
-      x_i = x.digits[i] & digitMask
+      x_i = x.digits[i]
       carry = 0
       for j in [0...y.size]
-        y_j = y.digits[j] & digitMask
+        y_j = y.digits[j]
         k = i + j
         z_k = z.digits[k] + x_i * y_j + carry
         carry = z_k >> logBase
@@ -190,7 +178,7 @@ class Exact
 
   _eql = (x, y) ->
     if x.msb isnt y.msb then false
-    else if (_sign x) isnt (_sign y) then false
+    else if x.sign isnt y.sign then false
     else
       for i in [0...min x.size, y.size]
         if x.digits[i] isnt y.digits[i] then return false
@@ -218,8 +206,6 @@ class Exact
   # methods with a prefixed _ modify one of their arguments, and generally do not create new exact
   # numbers.
   @_alloc:      _alloc
-  @_sign:       _sign
-  @_setSign:    _setSign
   @_negate:     _negate
   @_msb:        _msb
   @_value:      _value
@@ -238,23 +224,22 @@ class Exact
       if @size > x.size
         @digits[i] = 0 for i in [x.size...@size]
 
-      _setSign this, x.sign()
+      @sign = x.sign
       @msb = if bits >= x.msb then x.msb else _msb this
 
     else if not x? or (x = round x) is 0
       _alloc this, (Number bits) or logBase
+      @sign = 1
       @msb = 0
 
     else if -(1 << maxBinary) < x < (1 << maxBinary)
-      sign = if x > 0 then 1 else -1
+      @sign = if x > 0 then 1 else -1
       x = abs x
       _alloc this, max (Number bits) or (log x + 1)/LN2
 
       @digits[0] = x & digitMask
       @digits[1] = (x >> logBase) & digitMask if @size > 1
       @msb = _msb this
-
-      @negate() if sign is -1
 
     else
       @fromHex (x.toString 16), bits
@@ -264,11 +249,11 @@ class Exact
     bits = (Number bits) or logBase
 
     if hexDigits[0] is '-'
-      sign = -1
+      @sign = -1
       hexDigits = hexDigits.slice 1
 
     else
-      sign = 1
+      @sign = 1
 
     length = hexDigits.length
     _alloc this, max bits, length * 4
@@ -293,7 +278,6 @@ class Exact
       @digits[j] = acc
 
     @msb = _msb this
-    @negate() if sign is -1
     this
 
   toHex: () ->
@@ -321,21 +305,16 @@ class Exact
 
   toString: (radix) -> @valueOf().toString radix
 
-  sign: () -> _sign this
-
   negate: () -> _negate this
 
   add: (y) ->
     y = new Exact y if not (y instanceof Exact)
     z = new Exact 0, 1 + max @msb, y.msb
 
-    sign = @sign()
-    sign_y = y.sign()
-
-    if sign > sign_y
+    if @sign > y.sign
       _sub this, y, z
 
-    else if sign_y > sign
+    else if y.sign > @sign
       _sub y, this, z
 
     else
@@ -355,7 +334,8 @@ class Exact
 
       _mul this, y, z
 
-      _setSign z, @sign() * y.sign()
+      z.sign = @sign * y.sign
+      z
 
   shl: (k) -> _shl (new Exact this), k
   shr: (k) -> _shr (new Exact this), k
@@ -395,10 +375,13 @@ class Exact
       new Exact
 
     else
-      sign = @sign() * y.sign()
-      x = _setSign (new Exact this), 1
-      y = _setSign (new Exact y), 1
-      _setSign (Kmul x, y), sign
+      sign = @sign * y.sign
+      x = new Exact this
+      y = new Exact y
+      x.sign = y.sign = 1
+      z = Kmul x, y
+      z.sign = sign
+      z
 
 
   @test: () ->
@@ -600,8 +583,8 @@ class Exact
   @testKaratsubaThreshold: () ->
     randomHex = (n) -> (toHexCodex[floor 16*random()] for i in [1...n]).join ''
 
-    H = ((new Exact 0, 4096).fromHex randomHex 1024 for i in [0...100])
-    K = ((new Exact 0, 4096).fromHex randomHex 1024 for i in [0...100])
+    H = ((new Exact 0, 10240).fromHex randomHex 2560 for i in [0...100])
+    K = ((new Exact 0, 10240).fromHex randomHex 2560 for i in [0...100])
 
     startKaratsuba = new Date
 
