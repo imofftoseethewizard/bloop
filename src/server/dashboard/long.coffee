@@ -284,19 +284,39 @@ class Long
     # 14.20.3.4-5
     [qs, ws]
 
+  _pow = (xs, k) ->
+    zs = [1]
+    xs = xs.slice()
+    while k > 0
+      zs = _kmul zs, xs if k & 1
+      xs = _kmul xs, xs
+      k >>>= 1
+
+    zs
+
+
+  _mulmod = (xs, ys, ms) -> (_divmod (_kmul xs, ys), ms)[1]
+
+
+  _powmod = (xs, ys, ms) ->
+    xs = xs.slice()
+    ys = ys.slice()
+    zs = [1]
+    while true
+      zs = _mulmod zs, xs, ms if ys[0] & 1
+      _bshr ys, 1
+      if (_size ys) is 0 then return zs
+      xs = _mulmod xs, xs, ms
+
 
   _shl = (xs, k) ->
     [].splice.apply xs, [0, 0, (_zeros.slice 0, k)...]
-#    zs = _zeros.slice 0, k
-#    [].push.apply zs, xs
-#    zs
     xs
 
 
   _shr = (xs, k) ->
     xs.splice 0, k
     xs
-#    xs.slice k
 
 
   _bshl = (xs, k) ->
@@ -341,7 +361,10 @@ class Long
   @sub:    _sub
   @mul:    _mul
   @kmul:   _kmul
+  @pow:    _pow
   @divmod: _divmod
+  @mulmod: _mulmod
+  @powmod: _powmod
   @shl:    _shl
   @shr:    _shr
   @bshl:   _bshl
@@ -457,6 +480,39 @@ class Long
         q.sign = 1
 
       [q, r]
+
+  div: (y) -> (@divmod y)[0]
+  mod: (y) -> (@divmod y)[1]
+
+  pow: (y) ->
+    y = Number y
+    y = 0 if y < 0
+
+    z = new Long _pow @digits, y
+    z.sign = if y & 1 then @sign else 1
+
+    z
+
+  mulmod: (y, m) ->
+    y = new Long y if not (y instanceof Long)
+    m = new Long m if not (m instanceof Long)
+
+    zs = _mulmod @digits, y.digits, m.digits
+    if @sign * y.sign < 0 and _size zs > 0
+      zs = _sub m.digits.slice(), zs
+
+    new Long zs
+
+  powmod: (y, m) ->
+    y = new Long y if not (y instanceof Long)
+    m = new Long m if not (m instanceof Long)
+
+    zs = _powmod @digits, y.digits, m.digits
+    if @sign < 0 && y.digits[0] & 1 and _size zs > 0
+      zs = _sub m.digits.slice(), zs
+
+    new Long zs
+
 
   shl:  (k) -> new Long _shl  @digits.slice(), k
   shr:  (k) -> new Long _shr  @digits.slice(), k
@@ -654,23 +710,19 @@ class Long
       H = []
       K = []
       for j in [0...100]
-        H[j] = h_j = new Long
-        K[j] = k_j = new Long
+        h = new Long _long randomHex N
+        k = new Long _long randomHex N
 
-        h_j.digits = _long randomHex N
-        k_j.digits = _long randomHex N
-
-      for j in [0...100]
         try
-          assert _eq (H[j].mul K[j]), H[j].kmul K[j]
+          assert _eq (h.mul k), h.kmul k
 
         catch err
           console.log 'stochastic multiplication consistency test failed'
           console.log err, err.message
           console.log 'H: '
-          console.log _hex H[j].digits
+          console.log _hex h.digits
           console.log 'K: '
-          console.log _hex K[j].digits
+          console.log _hex k.digits
           break
 
 
@@ -769,6 +821,70 @@ class Long
           console.log err
           console.log err.message
           N = 0
+
+
+    for i in [0...100]
+      for k in [2, 5]
+        B = [0, 0, 0x4000000, 0x40000, 0x2000, 0x400]
+        b = ceil B[k] * random()
+
+        try
+          result = Number (new Long b).pow k
+          assert (pow b, k) == result
+
+        catch err
+          console.log 'systematic pow test #' + i + ' failed for ' + b + ' and ' + k
+          console.log '' + (pow b, k) + ' != ' + result
+          console.log err
+          console.log err.message
+          N = 0
+
+
+    for i in [4...10]
+      N = pow 2, i
+      for j in [0...100]
+        h = new Long _long randomHex N
+        k = new Long _long randomHex N
+        m = new Long _long randomHex N
+
+        try
+          assert _eq ((h.mul k).mod m), h.mulmod k, m
+
+        catch err
+          console.log 'stochastic mulmod consistency test failed'
+          console.log err, err.message
+          console.log 'h: '
+          console.log _hex h.digits
+          console.log 'k: '
+          console.log _hex k.digits
+          console.log 'm: '
+          console.log _hex m.digits
+          console.log err
+          console.log err.message
+          break
+
+
+    for i in [4...10]
+      N = pow 2, i
+      k = 7 - (i >> 1)
+      for j in [0...100]
+        h = new Long _long randomHex N
+        m = new Long _long randomHex N
+
+        try
+          assert _eq ((h.pow k).mod m), h.powmod k, m
+
+        catch err
+          console.log 'stochastic powmod consistency test failed for exponent ' + k
+          console.log err, err.message
+          console.log 'h: '
+          console.log _hex h.digits
+          console.log 'm: '
+          console.log _hex m.digits
+          console.log err
+          console.log err.message
+          break
+
 
     undefined
 
