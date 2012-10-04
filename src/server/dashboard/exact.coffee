@@ -18,49 +18,55 @@ assert = (cond) -> if not cond then throw stackTrace()
 
 
 
-c = 1                                   # This determines the maximum size of an integer which can
-while 1 << c > 0 then c++               # be reliably manipulated with bitwise operations.
-maxBinary  = c-1
-
-logBase    = maxBinary >> 1             # if maxBinary is 30, then the base should be 15, so that
-                                        # two digits when multiplied will still be usable with
-                                        # bitwise operators
-
-digitMask  = (1 << logBase) - 1         # used to mask of the bits that comprise a digit, also
-                                        # used for sign-extension of empty digits during 2's comp
-                                        # operation.
-
 # Exact numbers.  So-called because in the intended range of their use (very large integers for
 # cryptography), floating point numbers are inexact.  It's two fewer syllables than BigInteger,
 # and not such a phonetic mess as BigNum.
 #
 class Exact
-  # The Karatsuba multiplication algorithm is only worth performing on numbers of sufficiently
-  # large size.  Below that it is just as fast or faster (low overhead) to use the naive n^2
-  # method.  This value sets the minimum msb that both operands must have for the K-multiplication
-  # algorithm to continue.
-  @KaratsubaThresholdBits: 3*logBase
+  _maxBinary  = do () ->
+    c = 1                               # This determines the maximum size of an integer which can
+    while 1 << c > 0 then c++           # be reliably manipulated with bitwise operations.
+    c-1
 
-  Zeros = new Uint8Array 10240
-  _zeros = (k) -> Array.prototype.slice.call Zeros, 0, k
+  _radix  = _maxBinary >> 1             # if maxBinary is 30, then the base should be 15, so that
+                                        # two digits when multiplied will still be usable with
+                                        # bitwise operators
+
+  _digitMask  = (1 << _radix) - 1       # used to mask of the bits that comprise a digit.
+  _upperMask  = -1 ^ _digitMask
+
+
+  # A cache of lots of zeros to speed initialization.
+  _zeros = do () ->
+    Zeros = new Uint8Array 10240
+    (k) -> Array.prototype.slice.call Zeros, 0, k
 
   # Used to convert hex to a number.
-  fromHexCodex = []
-  do () ->
-    fromHexCodex[i.toString(16)] = i for i in [0...16]
-    fromHexCodex[i.toString(16).toUpperCase()] = i for i in [10...16]
+  _fromHexCodex = do () ->
+    codex = []
+    codex[i.toString(16)] = i for i in [0...16]
+    codex[i.toString(16).toUpperCase()] = i for i in [10...16]
+    codex
 
   # Used to convert a number to hex.
-  toHexCodex = do () -> i.toString(16) for i in [0...16]
+  _toHexCodex = do () -> i.toString(16) for i in [0...16]
 
   # Allocates an array for the number.
   _alloc = (x, bits) ->
-    x.size = ceil bits / logBase
+    x.size = ceil bits / _radix
     x.digits = _zeros x.size
 
-  _negate = (x) ->
-    x.sign *= -1
-    x
+  _set = (x, k) ->
+    if k instanceof Exact
+      x.digits = k.digits.slice()
+      x.msb = k.msb
+      x.sign = k.sign
+      x.size = k.size
+    else
+      x.digits = _zeros x.size
+      x.digits[0] = (abs k) & _digitMask
+      x.sign = if k >= 0 then 1 else -1
+      x.msb = _msb x
 
   # Computes the index of most significant bit set.
   _msb = (x) ->
@@ -71,13 +77,21 @@ class Exact
     if d == 0
       0
     else
-      1 + j*logBase + floor ((log d)/LN2)
+      1 + j*_radix + floor ((log d)/LN2)
 
   # Converts the exact number into a Number.
   _value = (x) ->
     v = 0
-    v += x.digits[j] * (pow 2, j*logBase) for j in [0...x.size]
+    v += x.digits[j] * (pow 2, j*_radix) for j in [0...x.size]
     x.sign * v
+
+  _negate = (x) ->
+    x.sign *= -1
+    x
+
+  _abs = (x) ->
+    x.sign = 1
+    x
 
   # Performs addition. z = x + y or x += y
   # If the third argument is not present, then this function uses its first
@@ -90,8 +104,8 @@ class Exact
       y_j = y.digits[j] or 0
 
       z_j = x_j + y_j + carry
-      z.digits[j] = z_j & digitMask
-      carry = z_j >> logBase
+      z.digits[j] = z_j & _digitMask
+      carry = z_j >> _radix
 
     z.sign = x.sign
     z.msb = _msb z
@@ -111,13 +125,36 @@ class Exact
         z_j = x_j - y_j + carry
         if z_j < 0
           carry = -1
-          z_j += digitMask + 1
+          z_j += _digitMask + 1
         else
           carry = 0
-        z.digits[j] = digitMask & z_j
+        z.digits[j] = _digitMask & z_j
 
       z.msb = _msb z
       if carry is -1 then _negate _sub y, x, z else z
+
+  # Performs subtraction. x -= y
+  # This function ignores the signs of x and y, and stores its result in x.
+  # Caller should ensure that the magnitude of x greater than or equal y.
+  _msub = (x, y) ->
+    z = x
+    xs = x.digits
+    ys = y.digits
+    zs = z.digits
+    carry = 0
+    for j in [0...z.size]
+      x_j = xs[j] or 0
+      y_j = ys[j] or 0
+      z_j = x_j - y_j + carry
+      if z_j < 0
+        carry = -1
+        z_j += _digitMask + 1
+      else
+        carry = 0
+      zs[j] = _digitMask & z_j
+
+      z.msb = _msb z
+    z
 
   # Perform basic multiplication: z = x * y.
   _mul = (x, y, z) ->
@@ -128,14 +165,14 @@ class Exact
         y_j = y.digits[j]
         k = i + j
         z_k = z.digits[k] + x_i * y_j + carry
-        carry = z_k >> logBase
-        z.digits[k] = z_k & digitMask
+        carry = z_k >> _radix
+        z.digits[k] = z_k & _digitMask
 
       while carry and k < z.size
         k++
         z_k = z.digits[k] + carry
-        carry = z_k >> logBase
-        z.digits[k] = z_k & digitMask
+        carry = z_k >> _radix
+        z.digits[k] = z_k & _digitMask
 
       assert carry is 0
 
@@ -150,8 +187,8 @@ class Exact
     if k < x.size
       x.digits.unshift.apply x.digits, _zeros k
       x.digits.splice x.size, k
-      x.msb += logBase * k
-      if x.msb > x.size * logBase
+      x.msb += _radix * k
+      if x.msb > x.size * _radix
         x.msb = _msb x
     else
       x.digits = _zeros x.size
@@ -168,7 +205,7 @@ class Exact
     if k < x.size
       x.digits.push.apply x.digits, _zeros k
       x.digits.splice 0, k
-      x.msb = max 0, x.msb - logBase * k
+      x.msb = max 0, x.msb - _radix * k
 
     else
       x.digits = _zeros x.size
@@ -176,6 +213,46 @@ class Exact
 
     x
 
+  # Shift number left by k bits.
+  # k should be an integer greater than zero.
+  # This function modifies its first argument.
+  _bitShl = (x, k) ->
+    b = k % _radix
+    j = (k - b)/_radix
+
+    if j > 0 then _shl x, j
+
+    ds = x.digits
+
+    carry = 0
+    for i in [0...@size]
+      d = (ds[i] << b) | carry
+      carry = (d & _upperMask) >> _radix
+      ds[i] = d & _digitMask
+
+    x
+
+  # Shift number right by k bits.
+  # k should be an integer greater than zero.
+  # This function modifies its first argument.
+  _bitShr = (x, k) ->
+    b = k % _radix
+    j = (k - b)/_radix
+
+    if j > 0 then _shr x, j
+
+    ds = x.digits
+
+    carry = 0
+    for i in [@size-1..0]
+      d = ds[i] | carry
+      carry = (d & _upperMask) << _radix
+      ds[i] = (d >> b) & _digitMask
+
+    x
+
+
+  # Test if two exact numbers are equal.
   _eql = (x, y) ->
     if x.msb isnt y.msb then false
     else if x.sign isnt y.sign then false
@@ -183,6 +260,123 @@ class Exact
       for i in [0...min x.size, y.size]
         if x.digits[i] isnt y.digits[i] then return false
       true
+
+   _rel = (x, y) ->
+    if x.sign > y.sign then '>'
+    else if x.sign < y.sign then '<'
+    else if x.msb > y.msb
+      if x.sign >= 0 then '>' else '<'
+    else if x.msb < y.msb
+      if x.sign >= 0 then '<' else '>'
+    else
+      x_ds = x.digits
+      y_ds = y.digits
+      if x.sign >= 0
+        for i in [0...min x.size, y.size]
+          x_i = x_ds[i]
+          y_i = y_ds[i]
+          if x_i > y_i then return '>'
+          if x_i < y_i then return '<'
+        '='
+      else
+        for i in [0...min x.size, y.size]
+          x_i = x_ds[i]
+          y_i = y_ds[i]
+          if x_i > y_i then return '<'
+          if x_i < y_i then return '>'
+        '='
+
+  _lt = (x, y) -> (_rel x, y) is '<'
+  _gt = (x, y) -> (_rel x, y) is '>'
+
+  _lte = (x, y) -> not (_rel x, y) is '>'
+  _gte = (x, y) -> not (_rel x, y) is '<'
+
+  # The following relations ignore the sign of the number and deal only with
+  # the magnitude.
+  _mrel = (x, y) ->
+    if x.msb > y.msb then '>'
+    else if x.msb < y.msb then '<'
+    else
+      x_ds = x.digits
+      y_ds = y.digits
+      for i in [0...min x.size, y.size]
+        x_i = x_ds[i]
+        y_i = y_ds[i]
+        if x_i > y_i then return '>'
+        if x_i < y_i then return '<'
+      '='
+
+  _mlt = (x, y) -> (_mrel x, y) is '<'
+  _mgt = (x, y) -> (_mrel x, y) is '>'
+
+  _mlte = (x, y) -> not (_mrel x, y) is '>'
+  _mgte = (x, y) -> not (_mrel x, y) is '<'
+
+  # Normalized division algorithm.  The most significant bit of the divisor y should be just below
+  # a digit boundary; that is y.msb % radix is radix-1.  This ensures that the division operation
+  # is efficient.  It is also assumed that y is non zero.  The signs of x and y are ignored. The
+  # resulting quotient and remainder will be in q and r, respectively.  See HAC 14.20.
+  #
+  # x and y are destroyed by this function, and the results are returned in q and r.
+  #
+  _normdiv = (x, y, q, r) ->
+    _set q, 0
+
+    # If x is less than y, then there is nothing to do.
+    if _mgte x, y
+      xs = x.digits
+      ys = y.digits
+
+      n = floor x.msb/_radix #/
+      t = floor y.msb/_radix #/
+
+      # k is the position of y's msb relative to its original position.  it is also the position
+      # at which the quotient is modified.
+      k = n - t
+
+      # Move y up to be comparable in size to x.
+      _shl y, k
+
+      # If x is still greater than y.  If y were not normalized, then the 'if' would need to be a
+      # 'while'.
+      if _mgte x, y
+        _inc q, k
+        _msub x, y
+
+      # Two most significant digits of the divisor
+      y_t   = ys[t]
+      y_t_1 = ys[t-1]
+
+      for i in [n...t]
+        k = i - t - 1
+
+        x_i = xs[i]
+
+        if x_i == y_i
+          _setDigit q, k, _digitMask
+
+        else
+          # Estimate the kth digit of q. HAC 14.20:3.1
+          est_q_k_num = _base2*x_i + (xs[i-1] << _radix) + xs[i-2]
+          est_q_k_denom = (y_t << _radix) + y_t_1
+          est_q_k = est_q_k_num/est_q_k_denom & _digitMask
+
+          if est_q_k * est_q_k_denom > est_q_k_num
+            est_q_k--
+
+          _setDigit q, k, est_q_k
+
+          _shr y, 1
+          z = _dmul y, k, qs[k]
+
+          if _mlt x, z
+            _add x, y
+            _dec q, k
+
+          _msub x, z
+
+    _set r, x
 
   # Division.  Unfinished.
   _div = (x, y, q, r) ->
@@ -194,11 +388,19 @@ class Exact
 
     else
       w = new Exact x
-      z = new Exact y, x.size * logBase
+      z = new Exact y, x.size * _radix
 
-      i = floor w.msb / logBase #/
-      j = floor z.msb / logBase #/
+      i = floor w.msb / _radix #/
+      j = floor z.msb / _radix #/
       while j++ < i then _shl z
+
+
+  # The Karatsuba multiplication algorithm is only worth performing on numbers of sufficiently
+  # large size.  Below that it is just as fast or faster (low overhead) to use the naive n^2
+  # method.  This value sets the minimum msb that both operands must have for the K-multiplication
+  # algorithm to continue.
+  @KaratsubaThresholdBits: 3*_radix
+
 
   # The internal methods are exposed as Exact._xxx.  The object methods farther below are in a
   # functional object-oriented style; that is, they are presented as member functions which
@@ -207,6 +409,7 @@ class Exact
   # numbers.
   @_alloc:      _alloc
   @_negate:     _negate
+  @_abs:        _abs
   @_msb:        _msb
   @_value:      _value
   @_add:        _add
@@ -214,7 +417,11 @@ class Exact
   @_shl:        _shl
   @_shr:        _shr
   @_eql:        _eql
-
+  @_rel:        _rel
+  @_gt:         _gt
+  @_gte:        _gte
+  @_lt:         _lt
+  @_lte:        _lte
 
   constructor: (x, bits) ->
 
@@ -228,17 +435,17 @@ class Exact
       @msb = if bits >= x.msb then x.msb else _msb this
 
     else if not x? or (x = round x) is 0
-      _alloc this, (Number bits) or logBase
+      _alloc this, (Number bits) or _radix
       @sign = 1
       @msb = 0
 
-    else if -(1 << maxBinary) < x < (1 << maxBinary)
+    else if -(1 << _maxBinary) < x < (1 << _maxBinary)
       @sign = if x > 0 then 1 else -1
       x = abs x
       _alloc this, max (Number bits) or (log x + 1)/LN2
 
-      @digits[0] = x & digitMask
-      @digits[1] = (x >> logBase) & digitMask if @size > 1
+      @digits[0] = x & _digitMask
+      @digits[1] = (x >> _radix) & _digitMask if @size > 1
       @msb = _msb this
 
     else
@@ -246,7 +453,7 @@ class Exact
 
 
   fromHex: (hexDigits, bits) ->
-    bits = (Number bits) or logBase
+    bits = (Number bits) or _radix
 
     if hexDigits[0] is '-'
       @sign = -1
@@ -263,13 +470,13 @@ class Exact
     bits = 0
     acc = 0
 
-    while i >= 0 and (x = fromHexCodex[hexDigits[i--]])?
+    while i >= 0 and (x = _fromHexCodex[hexDigits[i--]])?
       acc |= x << bits
       bits += 4
-      if bits >= logBase
-        @digits[j++] = acc & digitMask
-        acc >>= logBase
-        bits -= logBase
+      if bits >= _radix
+        @digits[j++] = acc & _digitMask
+        acc >>= _radix
+        bits -= _radix
 
     if i >= 0
       throw 'Error in hex conversion to exact at digit ' + i + ': ' + hexDigits
@@ -290,14 +497,14 @@ class Exact
 
     while j < size
       acc |= @digits[j++] << bits
-      bits += logBase
+      bits += _radix
       while bits >= 4
-        hexDigits[i++] = toHexCodex[acc & 0xf]
+        hexDigits[i++] = _toHexCodex[acc & 0xf]
         acc >>= 4
         bits -= 4
 
     if bits > 0
-      hexDigits[i] = toHexCodex[acc]
+      hexDigits[i] = _toHexCodex[acc]
 
     hexDigits.join ''
 
@@ -306,6 +513,9 @@ class Exact
   toString: (radix) -> @valueOf().toString radix
 
   negate: () -> _negate this
+
+  abs: () ->
+    if @sign is -1 then _negate new Exact this else this
 
   add: (y) ->
     y = new Exact y if not (y instanceof Exact)
@@ -342,7 +552,11 @@ class Exact
 
   ashl: (k) ->
     k or= 1
-    _shl (new Exact this, @msb + logBase*k), k
+    _shl (new Exact this, @msb + _radix*k), k
+
+  bitShl: (k) ->
+    _bitShl new Exact this, @msb + k
+
 
   Kmul: (y) ->
     K = Exact.KaratsubaThresholdBits
@@ -412,8 +626,8 @@ class Exact
 
           break
 
-    K = (pow 2, 3*logBase + 1) - 1
-    C = (pow 2, 3*logBase) - 1
+    K = (pow 2, 3*_radix + 1) - 1
+    C = (pow 2, 3*_radix) - 1
 
     m = Infinity
     M = -Infinity
@@ -559,7 +773,7 @@ class Exact
     #       console.log err
     #       N = 0
 
-    # randomHex = (n) -> (toHexCodex[floor 16*random()] for i in [1...n]).join ''
+    # randomHex = (n) -> (_toHexCodex[floor 16*random()] for i in [1...n]).join ''
 
     # for i in [4...10]
     #   N = pow 2, i
@@ -581,7 +795,7 @@ class Exact
     undefined
 
   @testKaratsubaThreshold: () ->
-    randomHex = (n) -> (toHexCodex[floor 16*random()] for i in [1...n]).join ''
+    randomHex = (n) -> (_toHexCodex[floor 16*random()] for i in [1...n]).join ''
 
     H = ((new Exact 0, 10240).fromHex randomHex 2560 for i in [0...100])
     K = ((new Exact 0, 10240).fromHex randomHex 2560 for i in [0...100])
