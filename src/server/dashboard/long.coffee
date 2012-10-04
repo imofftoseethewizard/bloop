@@ -29,6 +29,7 @@ class Long
 
   _radix = _width >> 1
   _base = 1 << _radix
+  _base2 = _base*_base
   _mask = _base - 1
   _MASK = ~_mask
 
@@ -217,27 +218,101 @@ class Long
 
       as
 
+
+  # This is implemented directly from the algorithm given in the Handbook of Applied Cryptography,
+  # by A. Menezes, P. van Oorschot, and S. Vanstone, CRC Press, 1996.  In particular Chapter 14,
+  # section 14.2.5, on page 598.  (The book is available online as PS and PDF downloads from
+  # http://cacr.uwaterloo.ca/hac/.)  The numbers below refer to the steps in Algorithm 14.20.
+  #
+  # While this implementation does not presume that its inputs are normalized (HAC 14.23), it will
+  # perform much better if they are.  In particular, this means that y_t0 >= _base >> 1.  This can
+  # be achieved by the application of _bshl to xs and ys before calling this function.  It does not
+  # affect the result, as the ratio of xs and ys is unchanged.
+  #
+  # The arguments are signless magnitudes. The sign convention for division or modulo should be
+  # handled by the caller.
+
+  _divmod = (xs, ys) ->
+    b = _base
+    b2 = _base2
+
+    n = (_size xs)-1
+    t = (_size ys)-1
+    k = n - t
+
+    ys_t0 = ys[t]
+    ys_t1 = ys[t-1]
+
+    ws = xs.slice()
+    zs = ys.slice()
+
+    # 14.20.1
+    qs = []
+    qs[k] = 0
+
+    # 14.20.2
+    _shl zs, k
+    while not _lt ws, zs
+      qs[k]++
+      _sub ws, zs
+
+    # 14.20.3
+    for i in [n...t]
+      w_i0 = ws[i]
+      w_i1 = ws[i-1]
+
+      # 14.20.3.1
+      if w_i0 == ys_t0
+        qs[i-t-1] = _base - 1
+
+      else
+        qs[i-t-1] = (w_i0 * b + w_i1) / ys_t0 & _mask
+
+      # 14.20.3.2
+      while qs[i-t-1] * (ys_t0 * b + ys_t1) > w_i0 * b2 + w_i1 * b + ws[i-2]
+        qs[i-t-1]--
+
+      # 14.20.3.3-4
+      _shr zs, 1
+      vs = _mul zs.slice(), qs[i-t-1]
+      if _lt ws, vs
+        _add ws, zs
+        qs[i-t-1]--
+
+      _sub ws, vs
+
+    # 14.20.3.4-5
+    [qs, ws]
+
+
   _shl = (xs, k) ->
-    zs = _zeros.slice 0, k
-    [].push.apply zs, xs
-    zs
+    [].splice.apply xs, [0, 0, (_zeros.slice 0, k)...]
+#    zs = _zeros.slice 0, k
+#    [].push.apply zs, xs
+#    zs
+    xs
 
 
-  _shr = (xs, k) -> xs.slice k
+  _shr = (xs, k) ->
+    xs.splice 0, k
+    xs
+#    xs.slice k
 
 
   _bshl = (xs, k) ->
     b = k % _radix
     j = (k - b)/_radix #
 
-    xs = _shl xs, j if j > 0
+    _shl xs, j if j > 0
 
     c = 0
-    zs = []
+    zs = xs
     for i in [0...xs.length]
       z_i = (xs[i] << b) | c
       c = (z_i & _MASK) >>> _radix
       zs[i] = z_i & _mask
+
+    zs[xs.length] = c if c
 
     zs
 
@@ -246,13 +321,13 @@ class Long
     b = k % _radix
     j = (k - b)/_radix
 
-    xs = _shr xs, j if j > 0
+    _shr xs, j if j > 0
 
     c = 0
-    zs = []
+    zs = xs
     for i in [xs.length-1..0]
       z_i = (xs[i] or 0) | c
-      c = (z_i & _MASK) << _radix
+      c = (z_i & _mask) << _radix
       zs[i] = (z_i >>> b) & _mask
 
     zs
@@ -266,6 +341,7 @@ class Long
   @sub:    _sub
   @mul:    _mul
   @kmul:   _kmul
+  @divmod: _divmod
   @shl:    _shl
   @shr:    _shr
   @bshl:   _bshl
@@ -275,6 +351,10 @@ class Long
     if x instanceof Long
       @digits = x.digits.slice()
       @sign = x.sign
+
+    else if x instanceof Array
+      @digits = x
+      @sign = 1
 
     else
       x = (Number x) or 0
@@ -335,14 +415,71 @@ class Long
     z.sign = x.sign * y.sign
     z
 
-  shl: (k) -> _shl (new Long this), k
-  shr: (k) -> _shr (new Long this), k
-  bshl: (k) -> _bshl (new Long this), k
-  bshr: (k) -> _bshr (new Long this), k
 
+  divmod: (y) ->
+    y = new Long y
+    ys = y.digits
+    ys_size = _size ys
 
+    if ys_size is 0
+      [Infinity, new Long]
+
+    else
+      xs = @digits.slice()
+      y_t = ys[ys_size-1]
+      c = 1
+      while (y_t >>= 1) > 0 then c++
+
+      # Section 14.23 in Handbook of Applied Cryptography (see comment above _divmod).
+      k = _radix - c
+      _bshl xs, k
+      _bshl ys, k
+
+      [qs, rs] = _divmod xs, ys
+      _bshr ys, k
+
+      q = new Long qs
+      r = new Long _bshr rs, k
+
+      # Euclidean Division convention:
+      #   0 <= r < q
+      #   sign q is @sign for positive y
+      #   sign q is -@sign for negative y
+      #
+
+      q.sign = @sign * y.sign
+
+      if @sign < 0 and (_size rs) > 0
+        r.digits = _sub ys, rs
+        _add qs, [1]
+
+      if (_size q.digits) is 0 and q.sign is -1
+        q.sign = 1
+
+      [q, r]
+
+  shl:  (k) -> new Long _shl  @digits.slice(), k
+  shr:  (k) -> new Long _shr  @digits.slice(), k
+  bshl: (k) -> new Long _bshl @digits.slice(), k
+  bshr: (k) -> new Long _bshr @digits.slice(), k
 
   @test: () ->
+    for i in [1..._radix*2]
+      try
+        assert (_value _bshl [1], i) == pow 2, i
+      catch err
+        console.log '_bshl test failed for i = ' + i
+        console.log err
+        console.log err.message
+
+    for i in [1..._radix*2]
+      try
+        assert (_value (_bshr (_bshl [1], i), i)) == 1
+      catch err
+        console.log '_bshr test failed for i = ' + i
+        console.log err
+        console.log err.message
+
     i = 0
     while (pow 2, i) < 1 + (pow 2, i)
       K = pow 2, i++
@@ -474,15 +611,7 @@ class Long
           console.log err
           N = 0
 
-    undefined
 
-
-    # The following tests are commented out because the present implementation of the Karatsuba
-    # multiplication algorithm doesn't perform better than the naive one, even for 4Kb numbers.
-    # The naive one can multiply 100 pairs of 4Kb numbers in about 280ms (Dell E4300, Linux,
-    # Chromium); the K-multiplier takes about 3 times as long.
-    #
-    #
     i = 0
     while i < I
       K = pow 2, i++
@@ -544,9 +673,111 @@ class Long
           console.log _hex K[j].digits
           break
 
+
+    h = new Long 50
+    for i in [1...10]
+      k = new Long i
+
+      try
+        [q, r] = h.divmod k
+        if k is 0
+          assert q is Infinity and (Number r) is 0
+        else
+          assert (Number k) * (Number q) + (Number r) == Number h
+
+      catch err
+        console.log 'positive-positive divmod test #' + i + ' failed for ' + (Number h) + ' and ' + (Number k)
+        console.log '[' + (floor h/k) + ', ' + (h % k) + '] != [' + (Number q) + ', ' + (Number r) + ']'
+        console.log err
+        console.log err.message
+        N = 0
+
+    h = new Long 50
+    for i in [1...10]
+      k = new Long -i
+
+      try
+        [q, r] = h.divmod k
+        if k is 0
+          assert q is Infinity and (Number r) is 0
+        else
+          assert (Number k) * (Number q) + (Number r) == Number h
+
+      catch err
+        console.log 'positive-negative divmod test #' + i + ' failed for ' + (Number h) + ' and ' + (Number k)
+        console.log '[' + (floor h/k) + ', ' + (h % i) + '] != [' + (Number q) + ', ' + (Number r) + ']'
+        console.log err
+        console.log err.message
+        N = 0
+
+    h = new Long -50
+    for i in [1...10]
+      k = new Long i
+
+      try
+        [q, r] = h.divmod k
+        if k is 0
+          assert q is Infinity and (Number r) is 0
+        else
+          assert (Number k) * (Number q) + (Number r) == Number h
+
+      catch err
+        console.log 'negative-positive divmod test #' + i + ' failed for ' + (Number h) + ' and ' + (Number k)
+        console.log '[' + (floor h/k) + ', ' + (-h % i) + '] != [' + (Number q) + ', ' + (Number r) + ']'
+        console.log err
+        console.log err.message
+        N = 0
+
+    h = new Long -50
+    for i in [1...10]
+      k = new Long -i
+
+      try
+        [q, r] = h.divmod k
+        if k is 0
+          assert q is Infinity and (Number r) is 0
+        else
+          assert (Number k) * (Number q) + (Number r) == Number h
+
+      catch err
+        console.log 'negative-negative divmod test #' + i + ' failed for ' + (Number h) + ' and ' + (Number k)
+        console.log '[' + (floor h/k) + ', ' + (-h % i) + '] != [' + (Number q) + ', ' + (Number r) + ']'
+        console.log err
+        console.log err.message
+        N = 0
+
+    i = 0
+    while i < I
+      K = pow 2, i++
+      C1 = floor K / 2
+      C2 = floor C1 / 2
+      N = min C2, 100
+      while N-- > 0
+        k = floor K * random() - C1
+        h = floor K * random() - C2
+
+        try
+          [q, r] = (new Long h).divmod new Long k
+          if k is 0
+            assert q is Infinity and (Number r) is 0
+          else
+            assert k * (Number q) + (Number r) == h
+
+        catch err
+          console.log 'stochastic divmod test #' + i + ' failed for ' + h + ' and ' + k
+          console.log '[' + (floor h/k) + ', ' + (((h % k) + h) % k) + '] != [' + (Number q) + ', ' + (Number r) + ']'
+          console.log err
+          console.log err.message
+          N = 0
+
     undefined
 
   @testKaratsubaThreshold: () ->
+    # Performance on a Dell E4300 Linux Chromium platform while performing 100 4096-bit
+    # multiplications
+    #   Naive:                  180ms
+    #   Karatsuba (limit = 40): 120ms
+    #
     codex = do () -> i.toString(16) for i in [0...16]
     randomHex = (n) -> (codex[floor 16*random()] for i in [1...n]).join ''
 
