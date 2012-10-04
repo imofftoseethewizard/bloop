@@ -158,8 +158,9 @@ class Long
     else
       if (_size xs) > 0 and (_size ys) > 0
         for j in [0...xs.length]
-
+          # Inlined for performance
           # zs = _add zs, (_mul ys, xs[j] or 0), j
+          #
           x_j = xs[j] or 0
           c = 0
           for i in [j...ys.length+j]
@@ -188,35 +189,33 @@ class Long
       xs_h = xs.slice k
       ys_h = ys.slice k
 
-      a = _kmul xs_h, ys_h
-      b = _kmul (_add xs_h, xs_l), (_add ys_h, ys_l)  # _add places result into first argument
-      c = _kmul xs_l, ys_l
+      as = _kmul xs_h, ys_h
+      bs = _kmul (_add xs_h, xs_l), (_add ys_h, ys_l)
+      cs = _kmul xs_l, ys_l
 
-      if _lt b, a
-        d_sign = -1
-        d = _add (_sub a.slice(), b), c
+      if _lt bs, as
+        ds_sign = -1
+        ds = _add (_sub as.slice(), bs), cs
 
       else
-        _sub b, a
-        if _lt b, c
-          d_sign = -1
-          d = _sub c.slice(), b
+        _sub bs, as
+        if _lt bs, cs
+          ds_sign = -1
+          ds = _sub cs.slice(), bs
         else
-          d_sign = 1
-          d = _sub b, c
+          ds_sign = 1
+          ds = _sub bs, cs
 
-      # _shl a, 2*k
-      [].splice.apply a, [0, 0, (_zeros.slice 0, 2*k)...]
+      _shl as, 2*k
+      _shl ds, k
+      _add as, cs
 
-      # _shl d, k
-      [].splice.apply d, [0, 0, (_zeros.slice 0, k)...]
+      if ds_sign is 1
+         _add as, ds
+      else
+        _sub as, ds
 
-      _add a, c
-
-      if d_sign is 1 then _add a, d
-      else                _sub a, d
-
-      a
+      as
 
   _shl = (xs, k) ->
     zs = _zeros.slice 0, k
@@ -557,8 +556,8 @@ class Long
       H[j] = h_j = new Long
       K[j] = k_j = new Long
 
-      h_j.digits = _long randomHex 2048
-      k_j.digits = _long randomHex 2048
+      h_j.digits = _long randomHex 1024
+      k_j.digits = _long randomHex 1024
 
     startKaratsuba = new Date
 
