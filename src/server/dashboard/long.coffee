@@ -183,7 +183,7 @@ class Long
     xs.length = _size xs
     xs
 
-  _mulA = (xs, ys) ->
+  _mul = (xs, ys) ->
     n_xs = xs.length
     n_ys = ys.length
 
@@ -206,47 +206,6 @@ class Long
         zs[j] = c
     _trim zs
 
-
-  _mulB = (xs, ys) ->
-    n_xs = xs.length
-    n_ys = ys.length
-
-    zs = _zeros.slice 0, n_xs + n_ys
-
-    if n_xs > 0 and n_ys > 0
-      for j in [0...n_xs] by 1
-        x_l = xs[j] & __demimask__
-        x_h = xs[j] >> __demiradix__
-        xx = x_h + x_l
-        i = c = 0
-        k = j
-        n = n_ys
-        while --n >= 0
-          yl_i = ys[i] & __demimask__
-          yh_i = ys[i++] >> __demiradix__
-
-          z_c = x_h * yh_i
-          z_l = x_l * yl_i
-          z_h = (xx * (yh_i + yl_i) - z_c - z_l)
-          z_k = zs[k] + ((z_h & __demimask__) << __demiradix__) + z_l + c
-          c = z_c + (z_h >>> __demiradix__) + (z_k >>> __radix__)
-          zs[k++] = z_k & __mask__
-        zs[k] = c if c > 0
-    _trim zs
-
-  _mul = _mulA
-
-  _setMul = (k) ->
-    switch k
-      when 'A' then _mul = _mulA
-      when 'B' then _mul = _mulB
-      else k = '?'
-    k
-
-  _getMul = () ->
-    if _mul is _mulA then 'A'
-    else if _mul is _mulB then 'B'
-    else '?'
 
   _kmul = (xs, ys) ->
     n_xs = xs.length
@@ -448,10 +407,6 @@ class Long
   @_eq:        _eq
   @_add:       _add
   @_sub:       _sub
-  @_setMul:    _setMul
-  @_getMul:    _getMul
-  @_mulA:       _mulA
-  @_mulB:       _mulB
   @_mul:       _mul
   @_kmul:      _kmul
   @_pow:       _pow
