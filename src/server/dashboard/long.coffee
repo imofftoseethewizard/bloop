@@ -15,7 +15,7 @@ stackTrace = () ->
 assert = (cond) -> if not cond then throw stackTrace()
 
 class Long
-  @KaratsubaLimit: 40
+  @KaratsubaLimit: 64  # a power of two seems to work best here.
 
   _mantissa = do () ->
     c = 0
@@ -27,11 +27,34 @@ class Long
     while ~~(pow 2, c) then c++         # be reliably manipulated with bitwise operations.
     c
 
-  _radix = _width >> 1
-  _base = 1 << _radix
-  _base2 = _base*_base
-  _mask = _base - 1
-  _MASK = ~_mask
+  ## %% Begin Remove for Specialize %%
+  __radix__  = 28
+  __base__   = 1 << __radix__
+  __base2__  = pow __base__, 2
+  __mask__   = __base__ - 1
+
+  # Used in one of the multipliers
+  __demiradix__ = __radix__ >> 1
+  __demibase__  = 1 << __demiradix__
+  __demimask__  = __demibase__ - 1
+
+  _setRadix = (radix) ->
+    __radix__  = radix
+    __base__   = 1 << __radix__
+    __base2__  = pow __base__, 2
+    __mask__   = __base__ - 1
+
+    # Used in one of the multipliers
+    __demiradix__ = __radix__ >> 1
+    __demibase__  = 1 << __demiradix__
+    __demimask__  = __demibase__ - 1
+  ## %% End Remove for Specialize %%
+
+  _addmul = null
+  _setAddmul = (n) ->
+    switch n
+      when 1 then _addmul = _addmul_1
+      when 2 then _addmul = _addmul_2
 
   _zeros = [].slice.call new Uint8Array 10240
 
@@ -49,10 +72,10 @@ class Long
         x = codex[hex[i]] or 0
         acc |= x << bits
         bits += 4
-        if bits >= _radix
-          zs[j++] = acc & _mask
-          acc >>>= _radix
-          bits -= _radix
+        if bits >= __radix__
+          zs[j++] = acc & __mask__
+          acc >>>= __radix__
+          bits -= __radix__
 
       zs[j] = acc if bits > 0
       zs
@@ -93,7 +116,7 @@ class Long
   _value = (xs) ->
     k = 0
     for i in [xs.length-1..0]
-      k = _base * k + (xs[i] or 0)
+      k = __base__ * k + (xs[i] or 0)
     k
 
 
@@ -103,13 +126,13 @@ class Long
     zs = xs
     for i in [k...ys.length+k]
       z_i = (xs[i] or 0) + (ys[i-k] or 0) + c
-      c = z_i >>> _radix
-      zs[i] = z_i & _mask
+      c = z_i >>> __radix__
+      zs[i] = z_i & __mask__
 
     while c
       z_i = (xs[i] or 0) + c
-      c = z_i >>> _radix
-      zs[i] = z_i & _mask
+      c = z_i >>> __radix__
+      zs[i] = z_i & __mask__
       i++
 
     zs
@@ -122,64 +145,90 @@ class Long
       z_i = (xs[i] or 0) - (ys[i-k] or 0) - c
       if z_i < 0
         c = 1
-        z_i += _mask + 1
+        z_i += __base__
       else
         c = 0
-      zs[i] = z_i & _mask
+      zs[i] = z_i & __mask__
 
-    xs_size = _size xs
-    while c and i < xs_size
+    n_xs = _size xs
+    while c and i < n_xs
       z_i = (xs[i] or 0) - c
       if z_i < 0
         c = 1
-        z_i += _mask + 1
+        z_i += __base__
       else
         c = 0
-      zs[i] = z_i & _mask
+      zs[i] = z_i & __mask__
       i++
 
     zs
 
+  # Adds x * @[i...i+n] to zs[j...j+n] with carry
+  _addmul_1 = (x, zs, j, n) ->
+    i = c = 0
+    while --n >= 0
+      y_i = @[i++] or 0
+      z_j = zs[j] or 0
+      v = x * y_i + z_j + c
+      c = floor v / __base__
+      zs[j++] = v & __mask__
+    c
+
+  # Adds x * @[i...i+n] to zs[j...j+n] with carry
+  _addmul_2 = (x, zs, j, n) ->
+    R = __radix__
+    M = __mask__
+    DR = __demiradix__
+    DM = __demimask__
+
+    x_l = x & DM
+    x_h = x >> DR
+    i = c = 0
+    while --n >= 0
+      yl_i = @[i] & DM
+      yh_i = @[i++] >> DR
+      m = x_h*yl_i + yh_i*x_l
+      z_j = x_l*yl_i + ((m & DM) << DR) + (zs[j] or 0) + (c & M)
+      c = (z_j >>> R) + (m >>> DR) + x_h*yh_i + (c >>> R)
+      zs[j++] = z_j & M
+    c
+
+  _addmul = _addmul_2
 
   _mul = (xs, ys) ->
-    zs = []
-    if not (ys instanceof Array)
-      k = ys or 0
-      c = 0
-      for i in [0...xs.length]
-        z_i = k * (xs[i] or 0) + c
-        c = z_i >>> _radix
-        zs[i] = z_i & _mask
+    R = __radix__
+    M = __mask__
+    DR = __demiradix__
+    DM = __demimask__
 
-      while c > 0
-        z_i = k * (xs[i] or 0) + c
-        c = z_i >>> _radix
-        zs[i++] = z_i & _mask
+    n_xs = xs.length
+    n_ys = ys.length
 
-    else
-      if (_size xs) > 0 and (_size ys) > 0
-        for j in [0...xs.length]
-          # Inlined for performance
-          # zs = _add zs, (_mul ys, xs[j] or 0), j
-          #
-          x_j = xs[j] or 0
-          c = 0
-          for i in [j...ys.length+j]
-            z_i = (zs[i] or 0) + x_j*(ys[i-j] or 0) + c
-            c = z_i >>> _radix
-            zs[i] = z_i & _mask
+    zs = [0]
+    if n_xs > 0 and n_ys > 0
+      for j in [0...n_xs] by 1
+        # Inline:
+        # zs[j + n_ys] = _addmul.call ys, xs[j], zs, j, n_ys
 
-          while c
-            z_i = (zs[i] or 0) + c
-            c = z_i >>> _radix
-            zs[i] = z_i & _mask
-            i++
-
+        x_l = xs[j] & DM
+        x_h = xs[j] >> DR
+        i = c = 0
+        while --n_ys >= 0
+          yl_i = ys[i] & DM
+          yh_i = ys[i++] >> DR
+          m = x_h*yl_i + yh_i*x_l
+          z_j = x_l*yl_i + ((m & DM) << DR) + (zs[j] or 0) + (c & M)
+          c = (z_j >>> R) + (m >>> DR) + x_h*yh_i + (c >>> R)
+          zs[j++] = z_j & M
+        zs[j] = c
     zs
 
 
   _kmul = (xs, ys) ->
-    if (k = min (_size xs), _size ys) <= Long.KaratsubaLimit
+    n_xs = xs.length
+    n_ys = ys.length
+
+    if (k = min n_xs, n_ys) <= Long.KaratsubaLimit
       _mul xs, ys
 
     else
@@ -219,13 +268,25 @@ class Long
       as
 
 
+  _scale = (xs, k) ->
+    c = 0
+    k &= __mask__
+    zs = []
+    for i in [0...xs.length] by 1
+      z_i = k * (xs[i] or 0) + c
+      c = z_i >>> __radix__
+      zs[i] = z_i & __mask__
+
+    zs[i] = c
+
+
   # This is implemented directly from the algorithm given in the Handbook of Applied Cryptography,
   # by A. Menezes, P. van Oorschot, and S. Vanstone, CRC Press, 1996.  In particular Chapter 14,
   # section 14.2.5, on page 598.  (The book is available online as PS and PDF downloads from
   # http://cacr.uwaterloo.ca/hac/.)  The numbers below refer to the steps in Algorithm 14.20.
   #
   # While this implementation does not presume that its inputs are normalized (HAC 14.23), it will
-  # perform much better if they are.  In particular, this means that y_t0 >= _base >> 1.  This can
+  # perform much better if they are.  In particular, this means that y_t0 >= __base__ >> 1.  This can
   # be achieved by the application of _bshl to xs and ys before calling this function.  It does not
   # affect the result, as the ratio of xs and ys is unchanged.
   #
@@ -233,8 +294,8 @@ class Long
   # handled by the caller.
 
   _divmod = (xs, ys) ->
-    b = _base
-    b2 = _base2
+    b = __base__
+    b2 = __base2__
 
     n = (_size xs)-1
     t = (_size ys)-1
@@ -263,10 +324,10 @@ class Long
 
       # 14.20.3.1
       if w_i0 == ys_t0
-        qs[i-t-1] = _base - 1
+        qs[i-t-1] = __base__ - 1
 
       else
-        qs[i-t-1] = (w_i0 * b + w_i1) / ys_t0 & _mask
+        qs[i-t-1] = (w_i0 * b + w_i1) / ys_t0 & __mask__
 
       # 14.20.3.2
       while qs[i-t-1] * (ys_t0 * b + ys_t1) > w_i0 * b2 + w_i1 * b + ws[i-2]
@@ -274,7 +335,7 @@ class Long
 
       # 14.20.3.3-4
       _shr zs, 1
-      vs = _mul zs.slice(), qs[i-t-1]
+      vs = _scale zs.slice(), qs[i-t-1]
       if _lt ws, vs
         _add ws, zs
         qs[i-t-1]--
@@ -320,17 +381,24 @@ class Long
 
 
   _bshl = (xs, k) ->
-    b = k % _radix
-    j = (k - b)/_radix #
+    b = k % __radix__
+    j = (k - b)/__radix__ #
 
     _shl xs, j if j > 0
 
+    b_l = b
+    b_r = __radix__ - b_l
+
+    mask_l = (1 << b_r) - 1
+    mask_h = ~mask_l
+
     c = 0
     zs = xs
-    for i in [0...xs.length]
-      z_i = (xs[i] << b) | c
-      c = (z_i & _MASK) >>> _radix
-      zs[i] = z_i & _mask
+    for i in [0...xs.length] by 1
+      x_i = xs[i]
+      z_i = (x_i & mask_l) << b_l | c
+      c = (x_i & mask_h) >>> b_r
+      zs[i] = z_i & __mask__
 
     zs[xs.length] = c if c
 
@@ -338,20 +406,33 @@ class Long
 
 
   _bshr = (xs, k) ->
-    b = k % _radix
-    j = (k - b)/_radix
+    b = k % __radix__
+    j = (k - b)/__radix__
 
     _shr xs, j if j > 0
 
+    b_r = b
+    b_l = __radix__ - b_r
+
+    mask_l = (1 << b_r) - 1
+    mask_h = ~mask_l
+
     c = 0
     zs = xs
-    for i in [xs.length-1..0]
-      z_i = (xs[i] or 0) | c
-      c = (z_i & _mask) << _radix
-      zs[i] = (z_i >>> b) & _mask
+    for i in [xs.length-1..0] by -1
+      x_i = xs[i]
+      z_i = (x_i & mask_h) >>> b_r | c
+      c = (x_i & mask_l) << b_l
+      zs[i] = z_i & __mask__
 
     zs
 
+  ## %% Begin Remove for Specialize %%
+  @_setRadix:  _setRadix
+  ## %% End Remove for Specialize %%
+  @_setAddmul: _setAddmul
+  @_getRadix:  () -> __radix__
+  @_getAddmul: () -> _addmul
   @long:   _long
   @size:   _size
   @value:  _value
@@ -377,6 +458,10 @@ class Long
 
     else if x instanceof Array
       @digits = x
+      @sign = 1
+
+    else if x instanceof String
+      @digits = _long x
       @sign = 1
 
     else
@@ -442,19 +527,19 @@ class Long
   divmod: (y) ->
     y = new Long y
     ys = y.digits
-    ys_size = _size ys
+    n_ys = _size ys
 
-    if ys_size is 0
+    if n_ys is 0
       [Infinity, new Long]
 
     else
       xs = @digits.slice()
-      y_t = ys[ys_size-1]
+      y_t = ys[n_ys-1]
       c = 1
       while (y_t >>= 1) > 0 then c++
 
       # Section 14.23 in Handbook of Applied Cryptography (see comment above _divmod).
-      k = _radix - c
+      k = __radix__ - c
       _bshl xs, k
       _bshl ys, k
 
@@ -520,19 +605,22 @@ class Long
   bshr: (k) -> new Long _bshr @digits.slice(), k
 
   @test: () ->
-    for i in [1..._radix*2]
+    for i in [1...__radix__*2]
       try
-        assert (_value _bshl [1], i) == pow 2, i
+        k = floor __base__ * random()
+        assert (_value _bshl [k], i) == k * pow 2, i
       catch err
-        console.log '_bshl test failed for i = ' + i
+        console.log '_bshl test failed for i = ' + i + '; k = ' + k
+        console.log '' + (k * pow 2, i) + ' != ' + _value _bshl [k], i
         console.log err
         console.log err.message
 
-    for i in [1..._radix*2]
+    for i in [1...__radix__*2]
       try
-        assert (_value (_bshr (_bshl [1], i), i)) == 1
+        assert (_value (_bshr (_bshl [k], i), i)) == k
       catch err
-        console.log '_bshr test failed for i = ' + i
+        console.log '_bshl/_bshr consistency test failed for i = ' + i + '; k = ' + k
+        console.log '' + k + ' != ' + _value _bshl [k], i
         console.log err
         console.log err.message
 
@@ -563,8 +651,8 @@ class Long
 
           break
 
-    K = (pow 2, 3*_radix + 1) - 1
-    C = (pow 2, 3*_radix) - 1
+    K = (pow 2, 3*__radix__ + 1) - 1
+    C = (pow 2, 3*__radix__) - 1
 
     m = Infinity
     M = -Infinity
@@ -726,6 +814,7 @@ class Long
           break
 
 
+    return undefined
     h = new Long 50
     for i in [1...10]
       k = new Long i
@@ -839,6 +928,7 @@ class Long
           console.log err.message
           N = 0
 
+    return undefined
 
     for i in [4...10]
       N = pow 2, i
@@ -862,7 +952,6 @@ class Long
           console.log err
           console.log err.message
           break
-
 
     for i in [4...10]
       N = pow 2, i
@@ -897,14 +986,8 @@ class Long
     codex = do () -> i.toString(16) for i in [0...16]
     randomHex = (n) -> (codex[floor 16*random()] for i in [1...n]).join ''
 
-    H = []
-    K = []
-    for j in [0...100]
-      H[j] = h_j = new Long
-      K[j] = k_j = new Long
-
-      h_j.digits = _long randomHex 1024
-      k_j.digits = _long randomHex 1024
+    H = (new Long _long randomHex 1024 for j in [0...100])
+    K = (new Long _long randomHex 1024 for j in [0...100])
 
     startKaratsuba = new Date
 

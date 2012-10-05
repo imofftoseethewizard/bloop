@@ -1,0 +1,7 @@
+#!/bin/sh
+
+coffee specialize-long.coffee 
+coffee -c long.coffee
+coffee -c long-30-bit.coffee 
+coffee -c long-28-bit.coffee 
+coffee -c long-26-bit.coffee 
