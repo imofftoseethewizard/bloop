@@ -14,7 +14,9 @@ stackTrace = () ->
 
 assert = (cond) -> if not cond then throw stackTrace()
 
-test = (N) ->
+test = (N, K) ->
+  K or= Long28.KaratsubaLimit
+
   codex = do () -> i.toString(16) for i in [0...16]
   randomHex = (n) -> (codex[floor 16*random()] for i in [1...n]).join ''
 
@@ -25,9 +27,6 @@ test = (N) ->
 
   # jsbn
   Bn = (new BigInteger H[j], 16 for j in [0...C0])
-
-  # # BigInt
-  # Bi = (biFromHex H[j] for j in [0...C0])
 
   # Long
   Lo = (new Long H[j] for j in [0...C0])
@@ -47,7 +46,6 @@ test = (N) ->
     (new Date) - start
 
   R_bn = []
-  R_bi = []
   R_lo = []
   R_lo26 = []
   R_lo28 = []
@@ -59,10 +57,6 @@ test = (N) ->
     for j in [0...C1]
       R_bn.push (r = new BigInteger)
       Bn[j].multiplyTo Bn[j+C1], r
-
-  # time_Bi = time () ->
-  #   for j in [0...C1]
-  #     R_bi.push biMultiply Bi[j], Bi[j+C1]
 
   time_Lo = time () ->
     for j in [0...C1]
@@ -88,16 +82,44 @@ test = (N) ->
   #   for j in [0...C1]
   #     R_lo28B.push Lo28[j].kmul Lo28[j+C1]
 
+  Long28.KaratsubaLimit = K
+
+  time_Lo28_0 = time () ->
+    for j in [0...C1]
+      Lo28[j].kmul Lo28[j+C1]
+
+  Long28.KaratsubaLimit = 1.25 * K
+
+  time_Lo28_1 = time () ->
+    for j in [0...C1]
+      Lo28[j].kmul Lo28[j+C1]
+
+  Long28.KaratsubaLimit = 1.5 * K
+
+  time_Lo28_2 = time () ->
+    for j in [0...C1]
+      Lo28[j].kmul Lo28[j+C1]
+
+  Long28.KaratsubaLimit = 1.75 * K
+
+  time_Lo28_3 = time () ->
+    for j in [0...C1]
+      Lo28[j].kmul Lo28[j+C1]
+
   time_Lo30 = time () ->
     for j in [0...C1]
       R_lo30.push Lo30[j].kmul Lo30[j+C1]
 
+  Long28.KarastubaLimit = K
 
   console.log 'jsbn:      ' + time_Bn
-  # console.log 'BigInt:    ' + time_Bi
   console.log 'long:      ' + time_Lo
   console.log 'long26:    ' + time_Lo26
   console.log 'long28:    ' + time_Lo28
+  console.log 'long28_0:    ' + time_Lo28_0
+  console.log 'long28_1:    ' + time_Lo28_1
+  console.log 'long28_2:    ' + time_Lo28_2
+  console.log 'long28_3:    ' + time_Lo28_3
   # console.log 'long28A:    ' + time_Lo28A
   # console.log 'long28B:    ' + time_Lo28B
   console.log 'long30:    ' + time_Lo30

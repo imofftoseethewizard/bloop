@@ -15,7 +15,7 @@ stackTrace = () ->
 assert = (cond) -> if not cond then throw stackTrace()
 
 class Long
-  @KaratsubaLimit: 64  # a power of two seems to work best here.
+  @KaratsubaLimit: 64
 
   _mantissa = do () ->
     c = 0
@@ -252,7 +252,7 @@ class Long
     n_xs = xs.length
     n_ys = ys.length
 
-    if (k = min n_xs, n_ys) <= Long.KaratsubaLimit
+    if (k = min n_xs, n_ys) <= Long__radix__.KaratsubaLimit
       _mul xs, ys
 
     else
@@ -268,29 +268,11 @@ class Long
       cs = _kmul xs_l, ys_l
 
       ds = _sub (_sub bs, as), cs
-      # if _lt bs, as
-      #   ds_sign = -1
-      #   ds = _add (_sub as.slice(), bs), cs
-
-      # else
-      #   _sub bs, as
-      #   if _lt bs, cs
-      #     ds_sign = -1
-      #     ds = _sub cs.slice(), bs
-      #   else
-      #     ds_sign = 1
-      #     ds = _sub bs, cs
 
       _shl as, 2*k
       _shl ds, k
       _add as, cs
-
       _add as, ds
-      # if ds_sign is 1
-      #
-      # else
-      #   _sub as, ds
-
       as
 
 
