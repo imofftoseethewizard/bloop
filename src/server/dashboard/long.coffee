@@ -158,28 +158,28 @@ class Long
     zs
 
   _mul = (xs, ys) ->
-    R = __radix__
-    M = __mask__
-    DR = __demiradix__
-    DM = __demimask__
-
     n_xs = xs.length
     n_ys = ys.length
 
     zs = [0]
     if n_xs > 0 and n_ys > 0
       for j in [0...n_xs] by 1
-        x_l = xs[j] & DM
-        x_h = xs[j] >> DR
+        x_l = xs[j] & __demimask__
+        x_h = xs[j] >> __demiradix__
+        xx = x_h + x_l
         i = c = 0
+        k = j
         while --n_ys >= 0
-          yl_i = ys[i] & DM
-          yh_i = ys[i++] >> DR
-          m = x_h*yl_i + yh_i*x_l
-          z_j = x_l*yl_i + ((m & DM) << DR) + (zs[j] or 0) + (c & M)
-          c = (z_j >>> R) + (m >>> DR) + x_h*yh_i + (c >>> R)
-          zs[j++] = z_j & M
-        zs[j] = c
+          yl_i = ys[i] & __demimask__
+          yh_i = ys[i++] >> __demiradix__
+
+          z_c = x_h * yh_i
+          z_l = x_l * yl_i
+          z_h = (xx * (yh_i + yl_i) - z_c - z_l)
+          z_k = ((z_h & __demimask__) << __demiradix__) + z_l + c
+          c = z_c + (z_h >>> __demiradix__) + (z_k >>> __radix__)
+          zs[k++] = z_k & __mask__
+        zs[k] = c if c > 0
     zs
 
 
@@ -228,15 +228,25 @@ class Long
 
 
   _scale = (xs, k) ->
-    c = 0
-    k &= __mask__
-    zs = []
-    for i in [0...xs.length] by 1
-      z_i = k * (xs[i] or 0) + c
-      c = z_i >>> __radix__
-      zs[i] = z_i & __mask__
+    n_xs = xs.length
 
-    zs[i] = c
+    k_l = k & __demimask__
+    k_h = k >> __demiradix__
+    kk = k_h + k_l
+
+    zs = [0]
+    i = c = 0
+    while --n_xs >= 0
+      x_l = xs[i] & __demimask__
+      x_h = xs[i] >> __demiradix__
+      z_c = x_h * k_h
+      z_l = x_l * k_l
+      z_h = kk * (x_h + x_l) - z_c - z_l
+      z_k = ((z_h & __demimask__) << __demiradix__) + z_l + c
+      c = z_c + (z_h >>> __demiradix__) + (z_k >>> __radix__)
+      zs[i++] = z_k & __mask__
+    zs[i] = c if c > 0
+    zs
 
 
   # This is implemented directly from the algorithm given in the Handbook of Applied Cryptography,
@@ -261,7 +271,7 @@ class Long
     k = n - t
 
     ys_t0 = ys[t]
-    ys_t1 = ys[t-1]
+    ys_t1 = ys[t-1] or 0
 
     ws = xs.slice()
     zs = ys.slice()
@@ -278,8 +288,8 @@ class Long
 
     # 14.20.3
     for i in [n...t]
-      w_i0 = ws[i]
-      w_i1 = ws[i-1]
+      w_i0 = ws[i]   or 0
+      w_i1 = ws[i-1] or 0
 
       # 14.20.3.1
       if w_i0 == ys_t0
@@ -289,7 +299,7 @@ class Long
         qs[i-t-1] = (w_i0 * b + w_i1) / ys_t0 & __mask__
 
       # 14.20.3.2
-      while qs[i-t-1] * (ys_t0 * b + ys_t1) > w_i0 * b2 + w_i1 * b + ws[i-2]
+      while qs[i-t-1] * (ys_t0 * b + ys_t1) > w_i0 * b2 + w_i1 * b + (ws[i-2] or 0)
         qs[i-t-1]--
 
       # 14.20.3.3-4
@@ -771,7 +781,6 @@ class Long
           break
 
 
-    return undefined
     h = new Long 50
     for i in [1...10]
       k = new Long i
@@ -868,6 +877,7 @@ class Long
           console.log err.message
           N = 0
 
+    return undefined
 
     for i in [0...100]
       for k in [2, 5]
@@ -885,7 +895,6 @@ class Long
           console.log err.message
           N = 0
 
-    return undefined
 
     for i in [4...10]
       N = pow 2, i
@@ -963,4 +972,7 @@ class Long
 
 
 exports = window
+exports.Long__radix__ = Long
+## %% Begin Remove for Specialize %%
 exports.Long = Long
+## %% End Remove for Specialize %%
