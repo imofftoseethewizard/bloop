@@ -16,20 +16,16 @@ test = () ->
   Bi = (biFromHex H[j] for j in [0...C0])
 
   # Long
-  long = Long.long
-  Lo = (new Long long H[j] for j in [0...C0])
+  Lo = (new Long H[j] for j in [0...C0])
 
   # Long
-  long26 = Long26.long
-  Lo26 = (new Long26 long26 H[j] for j in [0...C0])
+  Lo26 = (new Long26 H[j] for j in [0...C0])
 
   # Long
-  long28 = Long28.long
-  Lo28 = (new Long28 long28 H[j] for j in [0...C0])
+  Lo28 = (new Long28 H[j] for j in [0...C0])
 
   # Long
-  long30 = Long30.long
-  Lo30 = (new Long30 long30 H[j] for j in [0...C0])
+  Lo30 = (new Long30 H[j] for j in [0...C0])
 
   time = (fn) ->
     start = new Date
@@ -43,10 +39,10 @@ test = () ->
   R_lo28 = []
   R_lo30 = []
 
-  time_Bn = time () ->
-    for j in [0...C1]
-      R_bn.push (r = new BigInteger)
-      Bn[j].multiplyTo Bn[j+C1], r
+  # time_Bn = time () ->
+  #   for j in [0...C1]
+  #     R_bn.push (r = new BigInteger)
+  #     Bn[j].multiplyTo Bn[j+C1], r
 
   # time_Bi = time () ->
   #   for j in [0...C1]
@@ -68,7 +64,7 @@ test = () ->
     for j in [0...C1]
       R_lo30.push Lo30[j].kmul Lo30[j+C1]
 
-  console.log 'jsbn:      ' + time_Bn
+  # console.log 'jsbn:      ' + time_Bn
   # console.log 'BigInt:    ' + time_Bi
   console.log 'long:      ' + time_Lo
   console.log 'long26:    ' + time_Lo26

@@ -15,7 +15,7 @@ stackTrace = () ->
 assert = (cond) -> if not cond then throw stackTrace()
 
 class Long
-  @KaratsubaLimit: 64  # a power of two seems to work best here.
+  @KaratsubaLimit: 128  # a power of two seems to work best here.
 
   _mantissa = do () ->
     c = 0
@@ -202,27 +202,29 @@ class Long
       bs = _kmul (_add xs_h, xs_l), (_add ys_h, ys_l)
       cs = _kmul xs_l, ys_l
 
-      if _lt bs, as
-        ds_sign = -1
-        ds = _add (_sub as.slice(), bs), cs
+      ds = _sub (_sub bs, as), cs
+      # if _lt bs, as
+      #   ds_sign = -1
+      #   ds = _add (_sub as.slice(), bs), cs
 
-      else
-        _sub bs, as
-        if _lt bs, cs
-          ds_sign = -1
-          ds = _sub cs.slice(), bs
-        else
-          ds_sign = 1
-          ds = _sub bs, cs
+      # else
+      #   _sub bs, as
+      #   if _lt bs, cs
+      #     ds_sign = -1
+      #     ds = _sub cs.slice(), bs
+      #   else
+      #     ds_sign = 1
+      #     ds = _sub bs, cs
 
       _shl as, 2*k
       _shl ds, k
       _add as, cs
 
-      if ds_sign is 1
-         _add as, ds
-      else
-        _sub as, ds
+      _add as, ds
+      # if ds_sign is 1
+      #
+      # else
+      #   _sub as, ds
 
       as
 
@@ -263,56 +265,69 @@ class Long
   # handled by the caller.
 
   _divmod = (xs, ys) ->
-    b = __base__
-    b2 = __base2__
+    divmod = (xs, ys) ->
+      b = __base__
+      b2 = __base2__
 
-    n = (_size xs)-1
-    t = (_size ys)-1
-    k = n - t
+      n = (_size xs)-1
+      t = (_size ys)-1
+      k = n - t
 
-    ys_t0 = ys[t]
-    ys_t1 = ys[t-1] or 0
+      ys_t0 = ys[t]
+      ys_t1 = ys[t-1] or 0
 
-    ws = xs.slice()
-    zs = ys.slice()
+      # 14.20.1
+      qs = []
+      qs[k] = 0
 
-    # 14.20.1
-    qs = []
-    qs[k] = 0
+      # 14.20.2
+      _shl ys, k
+      while not _lt xs, ys
+        qs[k]++
+        _sub xs, ys
 
-    # 14.20.2
-    _shl zs, k
-    while not _lt ws, zs
-      qs[k]++
-      _sub ws, zs
+      # 14.20.3
+      for i in [n...t]
+        x_i0 = xs[i]   or 0
+        x_i1 = xs[i-1] or 0
 
-    # 14.20.3
-    for i in [n...t]
-      w_i0 = ws[i]   or 0
-      w_i1 = ws[i-1] or 0
+        # 14.20.3.1
+        if x_i0 == ys_t0
+          qs[i-t-1] = __base__ - 1
 
-      # 14.20.3.1
-      if w_i0 == ys_t0
-        qs[i-t-1] = __base__ - 1
+        else
+          qs[i-t-1] = (x_i0 * b + x_i1) / ys_t0 & __mask__
 
-      else
-        qs[i-t-1] = (w_i0 * b + w_i1) / ys_t0 & __mask__
+        # 14.20.3.2
+        while qs[i-t-1] * (ys_t0 * b + ys_t1) > x_i0 * b2 + x_i1 * b + (xs[i-2] or 0)
+          qs[i-t-1]--
 
-      # 14.20.3.2
-      while qs[i-t-1] * (ys_t0 * b + ys_t1) > w_i0 * b2 + w_i1 * b + (ws[i-2] or 0)
-        qs[i-t-1]--
+        # 14.20.3.3-4
+        _shr ys, 1
+        vs = _scale ys.slice(), qs[i-t-1]
+        if _lt xs, vs
+          _add xs, ys
+          qs[i-t-1]--
 
-      # 14.20.3.3-4
-      _shr zs, 1
-      vs = _scale zs.slice(), qs[i-t-1]
-      if _lt ws, vs
-        _add ws, zs
-        qs[i-t-1]--
+        _sub xs, vs
 
-      _sub ws, vs
+      # 14.20.3.4-5
+      [qs, xs]
 
-    # 14.20.3.4-5
-    [qs, ws]
+
+    # Note 14.23 on normalization
+    y_t = ys[(_size ys)-1]
+    c = 1
+    while (y_t >>= 1) > 0 then c++
+
+    k = __radix__ - c
+    xs = _bshl xs.slice(), k
+    ys = _bshl ys.slice(), k
+
+    [qs, rs] = divmod xs, ys
+
+    [qs, _bshr rs, k]
+
 
   _pow = (xs, k) ->
     zs = [1]
@@ -400,23 +415,23 @@ class Long
   @_setRadix:  _setRadix
   ## %% End Remove for Specialize %%
   @_getRadix:  () -> __radix__
-  @long:   _long
-  @size:   _size
-  @value:  _value
-  @lt:     _lt
-  @eq:     _eq
-  @add:    _add
-  @sub:    _sub
-  @mul:    _mul
-  @kmul:   _kmul
-  @pow:    _pow
-  @divmod: _divmod
-  @mulmod: _mulmod
-  @powmod: _powmod
-  @shl:    _shl
-  @shr:    _shr
-  @bshl:   _bshl
-  @bshr:   _bshr
+  @_long:      _long
+  @_size:      _size
+  @_value:     _value
+  @_lt:        _lt
+  @_eq:        _eq
+  @_add:       _add
+  @_sub:       _sub
+  @_mul:       _mul
+  @_kmul:      _kmul
+  @_pow:       _pow
+  @_divmod:    _divmod
+  @_mulmod:    _mulmod
+  @_powmod:    _powmod
+  @_shl:       _shl
+  @_shr:       _shr
+  @_bshl:      _bshl
+  @_bshr:      _bshr
 
   constructor: (x) ->
     if x instanceof Long
@@ -427,7 +442,7 @@ class Long
       @digits = x
       @sign = 1
 
-    else if x instanceof String
+    else if x instanceof String or typeof x is 'string'
       @digits = _long x
       @sign = 1
 
@@ -492,29 +507,19 @@ class Long
 
 
   divmod: (y) ->
-    y = new Long y
-    ys = y.digits
-    n_ys = _size ys
+    y = new Long y if not (y instanceof Long)
 
-    if n_ys is 0
+    xs = @digits
+    ys = y.digits
+
+    if (_size ys) is 0
       [Infinity, new Long]
 
     else
-      xs = @digits.slice()
-      y_t = ys[n_ys-1]
-      c = 1
-      while (y_t >>= 1) > 0 then c++
-
-      # Section 14.23 in Handbook of Applied Cryptography (see comment above _divmod).
-      k = __radix__ - c
-      _bshl xs, k
-      _bshl ys, k
-
       [qs, rs] = _divmod xs, ys
-      _bshr ys, k
 
       q = new Long qs
-      r = new Long _bshr rs, k
+      r = new Long rs
 
       # Euclidean Division convention:
       #   0 <= r < q
@@ -525,7 +530,7 @@ class Long
       q.sign = @sign * y.sign
 
       if @sign < 0 and (_size rs) > 0
-        r.digits = _sub ys, rs
+        r.digits = _sub ys.slice(), rs
         _add qs, [1]
 
       if (_size q.digits) is 0 and q.sign is -1
@@ -877,7 +882,6 @@ class Long
           console.log err.message
           N = 0
 
-    return undefined
 
     for i in [0...100]
       for k in [2, 5]
