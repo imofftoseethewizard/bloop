@@ -50,12 +50,6 @@ class Long
     __demimask__  = __demibase__ - 1
   ## %% End Remove for Specialize %%
 
-  _addmul = null
-  _setAddmul = (n) ->
-    switch n
-      when 1 then _addmul = _addmul_1
-      when 2 then _addmul = _addmul_2
-
   _zeros = [].slice.call new Uint8Array 10240
 
   _long = do () ->
@@ -163,38 +157,6 @@ class Long
 
     zs
 
-  # Adds x * @[i...i+n] to zs[j...j+n] with carry
-  _addmul_1 = (x, zs, j, n) ->
-    i = c = 0
-    while --n >= 0
-      y_i = @[i++] or 0
-      z_j = zs[j] or 0
-      v = x * y_i + z_j + c
-      c = floor v / __base__
-      zs[j++] = v & __mask__
-    c
-
-  # Adds x * @[i...i+n] to zs[j...j+n] with carry
-  _addmul_2 = (x, zs, j, n) ->
-    R = __radix__
-    M = __mask__
-    DR = __demiradix__
-    DM = __demimask__
-
-    x_l = x & DM
-    x_h = x >> DR
-    i = c = 0
-    while --n >= 0
-      yl_i = @[i] & DM
-      yh_i = @[i++] >> DR
-      m = x_h*yl_i + yh_i*x_l
-      z_j = x_l*yl_i + ((m & DM) << DR) + (zs[j] or 0) + (c & M)
-      c = (z_j >>> R) + (m >>> DR) + x_h*yh_i + (c >>> R)
-      zs[j++] = z_j & M
-    c
-
-  _addmul = _addmul_2
-
   _mul = (xs, ys) ->
     R = __radix__
     M = __mask__
@@ -207,9 +169,6 @@ class Long
     zs = [0]
     if n_xs > 0 and n_ys > 0
       for j in [0...n_xs] by 1
-        # Inline:
-        # zs[j + n_ys] = _addmul.call ys, xs[j], zs, j, n_ys
-
         x_l = xs[j] & DM
         x_h = xs[j] >> DR
         i = c = 0
@@ -430,9 +389,7 @@ class Long
   ## %% Begin Remove for Specialize %%
   @_setRadix:  _setRadix
   ## %% End Remove for Specialize %%
-  @_setAddmul: _setAddmul
   @_getRadix:  () -> __radix__
-  @_getAddmul: () -> _addmul
   @long:   _long
   @size:   _size
   @value:  _value

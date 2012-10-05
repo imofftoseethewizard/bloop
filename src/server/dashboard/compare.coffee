@@ -45,7 +45,7 @@ test = () ->
       R_lo.push Lo[j].kmul Lo[j+C1]
 
   console.log 'jsbn:    ' + time_Bn
-#  console.log 'BigInt:  ' + time_Bi
+  # console.log 'BigInt:  ' + time_Bi
   console.log 'long:    ' + time_Lo
 
 Long.testComparison = test
