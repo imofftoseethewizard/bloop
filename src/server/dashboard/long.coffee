@@ -1,6 +1,6 @@
 { abs, ceil, floor, LN2, log, max, min, pow, random, round } = Math
 
-makeString = (ch, i) ->  (ch for i in [0...i]).join ''
+makeString = (ch, n) -> (ch for i in [0...n]).join ''
 indents = do () -> (makeString ' ', i for i in [0...100])
 
 stackTrace = () ->
@@ -15,7 +15,7 @@ stackTrace = () ->
 assert = (cond) -> if not cond then throw stackTrace()
 
 class Long
-  @KaratsubaLimit: 128  # a power of two seems to work best here.
+  @KaratsubaLimit: 64  # a power of two seems to work best here.
 
   _mantissa = do () ->
     c = 0
@@ -52,13 +52,12 @@ class Long
 
   _zeros = [].slice.call new Uint8Array 10240
 
-  _long = do () ->
+  _repr = do () ->
     codex = []
     codex[i.toString 16] = i for i in [0...16]
 
     (hex) ->
       zs = []
-      j = 0
       bits = 0
       acc = 0
 
@@ -67,11 +66,11 @@ class Long
         acc |= x << bits
         bits += 4
         if bits >= __radix__
-          zs[j++] = acc & __mask__
+          zs.push acc & __mask__
           acc >>>= __radix__
           bits -= __radix__
 
-      zs[j] = acc if bits > 0
+      zs.push acc if bits > 0
       zs
 
   _hex = do () ->
@@ -79,12 +78,35 @@ class Long
 
     (xs) ->
       chs = []
-      for i in [(_size xs)-1..0]
-        x_i = xs[i] or 0
-        chs.push codex[x_i >> 4]
-        chs.push codex[x_i & 0xf]
-      chs.join ''
+      bits = 0
+      acc = 0
 
+      for i in [0..._size xs]
+        for x in [xs[i] & __demimask__, xs[i] >> __demiradix__]
+          acc |= x << bits
+          bits += __demiradix__
+          while bits >= 4
+            chs.push codex[acc & 0xf]
+            acc >>>= 4
+            bits -= 4
+
+      chs.push codex[acc] if bits > 0
+      while chs[chs.length-1] is '0' then chs.pop()
+
+      chs.reverse().join ''
+
+  _bitset = (xs, k, v) ->
+    j = k % __radix__
+    i = (k - j)/__radix__
+    if not v? or v
+      xs[i] |= 1 << j
+    else
+      xs[i] &= ~(1 << j)
+
+  _bit = (xs, k) ->
+    j = k % __radix__
+    i = (k - j)/__radix__
+    (xs[i] or 0) >>> j
 
   _size = (xs) ->
     i = xs.length-1
@@ -157,11 +179,40 @@ class Long
 
     zs
 
-  _mul = (xs, ys) ->
+  _trim = (xs) ->
+    xs.length = _size xs
+    xs
+
+  _mulA = (xs, ys) ->
     n_xs = xs.length
     n_ys = ys.length
 
-    zs = [0]
+    zs = _zeros.slice 0, n_xs + n_ys
+
+    if n_xs > 0 and n_ys > 0
+      for j in [0...n_xs] by 1
+        x_l = xs[j] & __demimask__
+        x_h = xs[j] >> __demiradix__
+        i = c = 0
+        k = j
+        n = n_ys
+        while --n >= 0
+          yl_i = ys[i] & __demimask__
+          yh_i = ys[i++] >> __demiradix__
+          m = x_h*yl_i + yh_i*x_l
+          z_j = zs[j] + x_l*yl_i + ((m & __demimask__) << __demiradix__) + c
+          c = (z_j >>> __radix__) + (m >>> __demiradix__) + x_h*yh_i
+          zs[j++] = z_j & __mask__
+        zs[j] = c
+    _trim zs
+
+
+  _mulB = (xs, ys) ->
+    n_xs = xs.length
+    n_ys = ys.length
+
+    zs = _zeros.slice 0, n_xs + n_ys
+
     if n_xs > 0 and n_ys > 0
       for j in [0...n_xs] by 1
         x_l = xs[j] & __demimask__
@@ -169,19 +220,33 @@ class Long
         xx = x_h + x_l
         i = c = 0
         k = j
-        while --n_ys >= 0
+        n = n_ys
+        while --n >= 0
           yl_i = ys[i] & __demimask__
           yh_i = ys[i++] >> __demiradix__
 
           z_c = x_h * yh_i
           z_l = x_l * yl_i
           z_h = (xx * (yh_i + yl_i) - z_c - z_l)
-          z_k = ((z_h & __demimask__) << __demiradix__) + z_l + c
+          z_k = zs[k] + ((z_h & __demimask__) << __demiradix__) + z_l + c
           c = z_c + (z_h >>> __demiradix__) + (z_k >>> __radix__)
           zs[k++] = z_k & __mask__
         zs[k] = c if c > 0
-    zs
+    _trim zs
 
+  _mul = _mulA
+
+  _setMul = (k) ->
+    switch k
+      when 'A' then _mul = _mulA
+      when 'B' then _mul = _mulB
+      else k = '?'
+    k
+
+  _getMul = () ->
+    if _mul is _mulA then 'A'
+    else if _mul is _mulB then 'B'
+    else '?'
 
   _kmul = (xs, ys) ->
     n_xs = xs.length
@@ -227,28 +292,6 @@ class Long
       #   _sub as, ds
 
       as
-
-
-  _scale = (xs, k) ->
-    n_xs = xs.length
-
-    k_l = k & __demimask__
-    k_h = k >> __demiradix__
-    kk = k_h + k_l
-
-    zs = [0]
-    i = c = 0
-    while --n_xs >= 0
-      x_l = xs[i] & __demimask__
-      x_h = xs[i] >> __demiradix__
-      z_c = x_h * k_h
-      z_l = x_l * k_l
-      z_h = kk * (x_h + x_l) - z_c - z_l
-      z_k = ((z_h & __demimask__) << __demiradix__) + z_l + c
-      c = z_c + (z_h >>> __demiradix__) + (z_k >>> __radix__)
-      zs[i++] = z_k & __mask__
-    zs[i] = c if c > 0
-    zs
 
 
   # This is implemented directly from the algorithm given in the Handbook of Applied Cryptography,
@@ -304,7 +347,7 @@ class Long
 
         # 14.20.3.3-4
         _shr ys, 1
-        vs = _scale ys.slice(), qs[i-t-1]
+        vs = _mul ys.slice(), [qs[i-t-1]]
         if _lt xs, vs
           _add xs, ys
           qs[i-t-1]--
@@ -415,13 +458,18 @@ class Long
   @_setRadix:  _setRadix
   ## %% End Remove for Specialize %%
   @_getRadix:  () -> __radix__
-  @_long:      _long
+  @_repr:      _repr
+  @_hex:       _hex
   @_size:      _size
   @_value:     _value
   @_lt:        _lt
   @_eq:        _eq
   @_add:       _add
   @_sub:       _sub
+  @_setMul:    _setMul
+  @_getMul:    _getMul
+  @_mulA:       _mulA
+  @_mulB:       _mulB
   @_mul:       _mul
   @_kmul:      _kmul
   @_pow:       _pow
@@ -443,16 +491,20 @@ class Long
       @sign = 1
 
     else if x instanceof String or typeof x is 'string'
-      @digits = _long x
+      @digits = _repr x
       @sign = 1
 
     else
       x = (Number x) or 0
-      @digits = _long x.toString 16
+      @digits = _repr x.toString 16
       @sign = if x >= 0 then 1 else -1
 
   valueOf: () -> @sign * _value @digits
-  toString: (radix) -> @valueOf().toString radix
+  toString: (radix) ->
+    if radix is 16
+      (if @sign is -1 then '-' else '') + _hex @digits
+    else
+      @valueOf().toString radix
 
   negate: () ->
     if _size @digits > 0
@@ -577,6 +629,23 @@ class Long
   bshr: (k) -> new Long _bshr @digits.slice(), k
 
   @test: () ->
+    do () ->
+      # test _repr and _hex functions
+
+      codex = do () -> i.toString(16) for i in [0...16]
+      randomHex = (n) -> (codex[floor 16*random()] for i in [1...n]).join ''
+
+      for i in [0...10]
+        try
+          H = (randomHex 30).replace /^0+/, ''
+          assert (result = _hex _repr H) == H
+        catch err
+          console.log '_hex and _repr test failed for H = ' + H
+          console.log result
+          console.log err
+          console.log err.message
+
+
     for i in [1...__radix__*2]
       try
         k = floor __base__ * random()
@@ -770,8 +839,8 @@ class Long
       H = []
       K = []
       for j in [0...100]
-        h = new Long _long randomHex N
-        k = new Long _long randomHex N
+        h = new Long _repr randomHex N
+        k = new Long _repr randomHex N
 
         try
           assert _eq (h.mul k), h.kmul k
@@ -785,6 +854,31 @@ class Long
           console.log _hex k.digits
           break
 
+    do () ->
+      try
+        for i in [0..100] by 4
+          i_long = (new Long 1).bshl i
+          for j in [0..100] by 4
+            j_long = (new Long 1).bshl j
+            H = _hex (i_long.mul j_long).digits
+            assert H.length is (i >> 2) + (j >> 2) + 1 and (H.match /^10*$/)?
+      catch err
+        console.log 'simple multiplication grid test failed for i = ' + i + '; j = ' + j
+        console.log 'result: "' + H + '"'
+        console.log err
+        console.log err.message
+
+    do () ->
+      try
+        for i in [1..50]
+          h = new Long makeString 'f', i
+          H = _hex (h.mul h).digits
+          assert H.length is 2 * i and (H.match /^f*e0*1$/)?
+      catch err
+        console.log '0xfff...fff multiplication test failed for i = ' + i
+        console.log 'result: "' + H + '"'
+        console.log err
+        console.log err.message
 
     h = new Long 50
     for i in [1...10]
@@ -903,9 +997,9 @@ class Long
     for i in [4...10]
       N = pow 2, i
       for j in [0...100]
-        h = new Long _long randomHex N
-        k = new Long _long randomHex N
-        m = new Long _long randomHex N
+        h = new Long _repr randomHex N
+        k = new Long _repr randomHex N
+        m = new Long _repr randomHex N
 
         try
           assert _eq ((h.mul k).mod m), h.mulmod k, m
@@ -927,8 +1021,8 @@ class Long
       N = pow 2, i
       k = 7 - (i >> 1)
       for j in [0...100]
-        h = new Long _long randomHex N
-        m = new Long _long randomHex N
+        h = new Long _repr randomHex N
+        m = new Long _repr randomHex N
 
         try
           assert _eq ((h.pow k).mod m), h.powmod k, m
@@ -956,18 +1050,18 @@ class Long
     codex = do () -> i.toString(16) for i in [0...16]
     randomHex = (n) -> (codex[floor 16*random()] for i in [1...n]).join ''
 
-    H = (new Long _long randomHex 1024 for j in [0...100])
-    K = (new Long _long randomHex 1024 for j in [0...100])
+    H = (new Long randomHex 2048 for j in [0...1000])
+    K = (new Long randomHex 2048 for j in [0...1000])
 
     startKaratsuba = new Date
 
-    H[i].kmul K[i] for i in [0...100]
+    H[i].kmul K[i] for i in [0...1000]
 
     endKaratsuba = new Date
 
     startNaive = new Date
 
-    H[i].mul K[i] for i in [0...100]
+    H[i].mul K[i] for i in [0...1000]
 
     endNaive = new Date
 
