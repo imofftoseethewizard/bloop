@@ -11,7 +11,7 @@ makeMultiplier = (n) ->
   code.push   '      for j in [0...n_xs] by 1'
   code.push   '        x_l = xs[j] & __demimask__'
   code.push   '        x_h = xs[j] >> __demiradix__'
-  code.push   '        i = c = 0'
+  code.push   '        c = 0'
   code.push   '        k = j'
   code.push   ''
 
