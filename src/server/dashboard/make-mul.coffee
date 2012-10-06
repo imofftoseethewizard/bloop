@@ -31,7 +31,13 @@ makeMultiplier = (n) ->
 
   code.join '\n'
 
-exports.mul = makeMultiplier
+fs = require 'fs'
+
+multipliers = (makeMultiplier i for i in [1..63])
+prefix = fs.readFileSync 'mul-prefix.coffee'
+
+fs.writeFileSync 'mul.coffee', [prefix, multipliers...].join '\n'
+
 
 
 

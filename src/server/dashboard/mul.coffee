@@ -13,6 +13,7 @@ __demimask__  = __demibase__ - 1
 
 window.Multipliers__radix__ =
 
+
   _mul1: (xs, ys) ->
     y_0 = ys[0]
   
@@ -35,6 +36,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul2: (xs, ys) ->
     y_0 = ys[0]
@@ -66,6 +68,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul3: (xs, ys) ->
     y_0 = ys[0]
@@ -105,6 +108,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul4: (xs, ys) ->
     y_0 = ys[0]
@@ -152,6 +156,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul5: (xs, ys) ->
     y_0 = ys[0]
@@ -207,6 +212,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul6: (xs, ys) ->
     y_0 = ys[0]
@@ -270,6 +276,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul7: (xs, ys) ->
     y_0 = ys[0]
@@ -341,6 +348,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul8: (xs, ys) ->
     y_0 = ys[0]
@@ -420,6 +428,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul9: (xs, ys) ->
     y_0 = ys[0]
@@ -507,6 +516,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul10: (xs, ys) ->
     y_0 = ys[0]
@@ -602,6 +612,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul11: (xs, ys) ->
     y_0 = ys[0]
@@ -705,6 +716,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul12: (xs, ys) ->
     y_0 = ys[0]
@@ -816,6 +828,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul13: (xs, ys) ->
     y_0 = ys[0]
@@ -935,6 +948,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul14: (xs, ys) ->
     y_0 = ys[0]
@@ -1062,6 +1076,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul15: (xs, ys) ->
     y_0 = ys[0]
@@ -1197,6 +1212,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul16: (xs, ys) ->
     y_0 = ys[0]
@@ -1340,6 +1356,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul17: (xs, ys) ->
     y_0 = ys[0]
@@ -1491,6 +1508,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul18: (xs, ys) ->
     y_0 = ys[0]
@@ -1650,6 +1668,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul19: (xs, ys) ->
     y_0 = ys[0]
@@ -1817,6 +1836,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul20: (xs, ys) ->
     y_0 = ys[0]
@@ -1992,6 +2012,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul21: (xs, ys) ->
     y_0 = ys[0]
@@ -2175,6 +2196,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul22: (xs, ys) ->
     y_0 = ys[0]
@@ -2366,6 +2388,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul23: (xs, ys) ->
     y_0 = ys[0]
@@ -2565,6 +2588,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul24: (xs, ys) ->
     y_0 = ys[0]
@@ -2772,6 +2796,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul25: (xs, ys) ->
     y_0 = ys[0]
@@ -2987,6 +3012,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul26: (xs, ys) ->
     y_0 = ys[0]
@@ -3210,6 +3236,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul27: (xs, ys) ->
     y_0 = ys[0]
@@ -3441,6 +3468,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul28: (xs, ys) ->
     y_0 = ys[0]
@@ -3680,6 +3708,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul29: (xs, ys) ->
     y_0 = ys[0]
@@ -3927,6 +3956,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul30: (xs, ys) ->
     y_0 = ys[0]
@@ -4182,6 +4212,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul31: (xs, ys) ->
     y_0 = ys[0]
@@ -4445,6 +4476,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul32: (xs, ys) ->
     y_0 = ys[0]
@@ -4716,6 +4748,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul33: (xs, ys) ->
     y_0 = ys[0]
@@ -4995,6 +5028,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul34: (xs, ys) ->
     y_0 = ys[0]
@@ -5282,6 +5316,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul35: (xs, ys) ->
     y_0 = ys[0]
@@ -5577,6 +5612,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul36: (xs, ys) ->
     y_0 = ys[0]
@@ -5880,6 +5916,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul37: (xs, ys) ->
     y_0 = ys[0]
@@ -6191,6 +6228,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul38: (xs, ys) ->
     y_0 = ys[0]
@@ -6510,6 +6548,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul39: (xs, ys) ->
     y_0 = ys[0]
@@ -6837,6 +6876,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul40: (xs, ys) ->
     y_0 = ys[0]
@@ -7172,6 +7212,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul41: (xs, ys) ->
     y_0 = ys[0]
@@ -7515,6 +7556,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul42: (xs, ys) ->
     y_0 = ys[0]
@@ -7866,6 +7908,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul43: (xs, ys) ->
     y_0 = ys[0]
@@ -8225,6 +8268,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul44: (xs, ys) ->
     y_0 = ys[0]
@@ -8592,6 +8636,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul45: (xs, ys) ->
     y_0 = ys[0]
@@ -8967,6 +9012,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul46: (xs, ys) ->
     y_0 = ys[0]
@@ -9350,6 +9396,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul47: (xs, ys) ->
     y_0 = ys[0]
@@ -9741,6 +9788,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul48: (xs, ys) ->
     y_0 = ys[0]
@@ -10140,6 +10188,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul49: (xs, ys) ->
     y_0 = ys[0]
@@ -10547,6 +10596,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul50: (xs, ys) ->
     y_0 = ys[0]
@@ -10962,6 +11012,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul51: (xs, ys) ->
     y_0 = ys[0]
@@ -11385,6 +11436,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul52: (xs, ys) ->
     y_0 = ys[0]
@@ -11816,6 +11868,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul53: (xs, ys) ->
     y_0 = ys[0]
@@ -12255,6 +12308,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul54: (xs, ys) ->
     y_0 = ys[0]
@@ -12702,6 +12756,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul55: (xs, ys) ->
     y_0 = ys[0]
@@ -13157,6 +13212,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul56: (xs, ys) ->
     y_0 = ys[0]
@@ -13620,6 +13676,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul57: (xs, ys) ->
     y_0 = ys[0]
@@ -14091,6 +14148,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul58: (xs, ys) ->
     y_0 = ys[0]
@@ -14570,6 +14628,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul59: (xs, ys) ->
     y_0 = ys[0]
@@ -15057,6 +15116,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul60: (xs, ys) ->
     y_0 = ys[0]
@@ -15552,6 +15612,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul61: (xs, ys) ->
     y_0 = ys[0]
@@ -16055,6 +16116,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul62: (xs, ys) ->
     y_0 = ys[0]
@@ -16566,6 +16628,7 @@ window.Multipliers__radix__ =
   
         zs[j] = c
     zs
+
 
   _mul63: (xs, ys) ->
     y_0 = ys[0]
