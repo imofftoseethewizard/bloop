@@ -402,6 +402,7 @@ class Long
   @_repr:      _repr
   @_hex:       _hex
   @_size:      _size
+  @_trim:      _trim
   @_value:     _value
   @_lt:        _lt
   @_eq:        _eq
