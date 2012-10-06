@@ -14,16 +14,15 @@ stackTrace = () ->
 
 assert = (cond) -> if not cond then throw stackTrace()
 
-test = (N, K) ->
-  K or= Long28.KaratsubaLimit
+test = (L, N) ->
 
   codex = do () -> i.toString(16) for i in [0...16]
   randomHex = (n) -> (codex[floor 16*random()] for i in [1...n]).join ''
 
-  C0 = 2000
+  C0 = N or 2000
   C1 = C0 >> 1
 
-  H = (randomHex N for j in [0...C0])
+  H = (randomHex L for j in [0...C0])
 
   # jsbn
   Bn = (new BigInteger H[j], 16 for j in [0...C0])
@@ -72,7 +71,6 @@ test = (N, K) ->
     for j in [0...C1]
       R_lo30.push Lo30[j].kmul Lo30[j+C1]
 
-  Long28.KarastubaLimit = K
 
   console.log 'jsbn:      ' + time_Bn
   console.log 'long:      ' + time_Lo

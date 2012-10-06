@@ -33,7 +33,6 @@ class Long
   __base2__  = pow __base__, 2
   __mask__   = __base__ - 1
 
-  # Used in one of the multipliers
   __demiradix__ = __radix__ >> 1
   __demibase__  = 1 << __demiradix__
   __demimask__  = __demibase__ - 1
@@ -44,10 +43,10 @@ class Long
     __base2__  = pow __base__, 2
     __mask__   = __base__ - 1
 
-    # Used in one of the multipliers
     __demiradix__ = __radix__ >> 1
     __demibase__  = 1 << __demiradix__
     __demimask__  = __demibase__ - 1
+
   ## %% End Remove for Specialize %%
 
   _zeros = [].slice.call new Uint8Array 10240
@@ -183,7 +182,7 @@ class Long
     xs.length = _size xs
     xs
 
-  _mul = (xs, ys) ->
+  __mul = (xs, ys) ->
     n_xs = xs.length
     n_ys = ys.length
 
@@ -207,289 +206,34 @@ class Long
     _trim zs
 
 
-  _mul32 = (xs, ys) ->
-    y_0 = ys[0]
-    y_1 = ys[1]
-    y_2 = ys[2]
-    y_3 = ys[3]
-    y_4 = ys[4]
-    y_5 = ys[5]
-    y_6 = ys[6]
-    y_7 = ys[7]
-    y_8 = ys[8]
-    y_9 = ys[9]
-    y_10 = ys[10]
-    y_11 = ys[11]
-    y_12 = ys[12]
-    y_13 = ys[13]
-    y_14 = ys[14]
-    y_15 = ys[15]
-    y_16 = ys[16]
-    y_17 = ys[17]
-    y_18 = ys[18]
-    y_19 = ys[19]
-    y_20 = ys[20]
-    y_21 = ys[21]
-    y_22 = ys[22]
-    y_23 = ys[23]
-    y_24 = ys[24]
-    y_25 = ys[25]
-    y_26 = ys[26]
-    y_27 = ys[27]
-    y_28 = ys[28]
-    y_29 = ys[29]
-    y_30 = ys[30]
-    y_31 = ys[31]
+  _mul = do () ->
 
-    zs = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    n_xs = xs.length
+    if Multipliers__radix__?
+      mul = (Multipliers__radix__['_mul' + j] for j in [0..63])
+      mul[0] = () -> [0]
 
-    if n_xs > 0
-      for j in [0...n_xs] by 1
-        x_l = xs[j] & __demimask__
-        x_h = xs[j] >> __demiradix__
-        i = c = 0
-        k = j
+      (xs, ys) ->
+        n_xs = xs.length
+        n_ys = ys.length
 
-        y_l = y_0 & __demimask__
-        y_h = y_0 >> __demiradix__
-        m = x_h*y_l + y_h*x_l
-        z_j = zs[j] + x_l*y_l + ((m & __demimask__) << __demiradix__) + c
-        c = (z_j >>> __radix__) + (m >>> __demiradix__) + x_h*y_h
-        zs[j++] = z_j & __mask__
+        if n_xs < n_ys
+          [xs, n_xs, ys, n_ys] = [ys, n_ys, xs, n_xs]
 
-        y_l = y_1 & __demimask__
-        y_h = y_1 >> __demiradix__
-        m = x_h*y_l + y_h*x_l
-        z_j = zs[j] + x_l*y_l + ((m & __demimask__) << __demiradix__) + c
-        c = (z_j >>> __radix__) + (m >>> __demiradix__) + x_h*y_h
-        zs[j++] = z_j & __mask__
+        _trim (mul[n_ys] or __mul) xs, ys
 
-        y_l = y_2 & __demimask__
-        y_h = y_2 >> __demiradix__
-        m = x_h*y_l + y_h*x_l
-        z_j = zs[j] + x_l*y_l + ((m & __demimask__) << __demiradix__) + c
-        c = (z_j >>> __radix__) + (m >>> __demiradix__) + x_h*y_h
-        zs[j++] = z_j & __mask__
+    else
+      __mul
 
-        y_l = y_3 & __demimask__
-        y_h = y_3 >> __demiradix__
-        m = x_h*y_l + y_h*x_l
-        z_j = zs[j] + x_l*y_l + ((m & __demimask__) << __demiradix__) + c
-        c = (z_j >>> __radix__) + (m >>> __demiradix__) + x_h*y_h
-        zs[j++] = z_j & __mask__
-
-        y_l = y_4 & __demimask__
-        y_h = y_4 >> __demiradix__
-        m = x_h*y_l + y_h*x_l
-        z_j = zs[j] + x_l*y_l + ((m & __demimask__) << __demiradix__) + c
-        c = (z_j >>> __radix__) + (m >>> __demiradix__) + x_h*y_h
-        zs[j++] = z_j & __mask__
-
-        y_l = y_5 & __demimask__
-        y_h = y_5 >> __demiradix__
-        m = x_h*y_l + y_h*x_l
-        z_j = zs[j] + x_l*y_l + ((m & __demimask__) << __demiradix__) + c
-        c = (z_j >>> __radix__) + (m >>> __demiradix__) + x_h*y_h
-        zs[j++] = z_j & __mask__
-
-        y_l = y_6 & __demimask__
-        y_h = y_6 >> __demiradix__
-        m = x_h*y_l + y_h*x_l
-        z_j = zs[j] + x_l*y_l + ((m & __demimask__) << __demiradix__) + c
-        c = (z_j >>> __radix__) + (m >>> __demiradix__) + x_h*y_h
-        zs[j++] = z_j & __mask__
-
-        y_l = y_7 & __demimask__
-        y_h = y_7 >> __demiradix__
-        m = x_h*y_l + y_h*x_l
-        z_j = zs[j] + x_l*y_l + ((m & __demimask__) << __demiradix__) + c
-        c = (z_j >>> __radix__) + (m >>> __demiradix__) + x_h*y_h
-        zs[j++] = z_j & __mask__
-
-        y_l = y_8 & __demimask__
-        y_h = y_8 >> __demiradix__
-        m = x_h*y_l + y_h*x_l
-        z_j = zs[j] + x_l*y_l + ((m & __demimask__) << __demiradix__) + c
-        c = (z_j >>> __radix__) + (m >>> __demiradix__) + x_h*y_h
-        zs[j++] = z_j & __mask__
-
-        y_l = y_9 & __demimask__
-        y_h = y_9 >> __demiradix__
-        m = x_h*y_l + y_h*x_l
-        z_j = zs[j] + x_l*y_l + ((m & __demimask__) << __demiradix__) + c
-        c = (z_j >>> __radix__) + (m >>> __demiradix__) + x_h*y_h
-        zs[j++] = z_j & __mask__
-
-        y_l = y_10 & __demimask__
-        y_h = y_10 >> __demiradix__
-        m = x_h*y_l + y_h*x_l
-        z_j = zs[j] + x_l*y_l + ((m & __demimask__) << __demiradix__) + c
-        c = (z_j >>> __radix__) + (m >>> __demiradix__) + x_h*y_h
-        zs[j++] = z_j & __mask__
-
-        y_l = y_11 & __demimask__
-        y_h = y_11 >> __demiradix__
-        m = x_h*y_l + y_h*x_l
-        z_j = zs[j] + x_l*y_l + ((m & __demimask__) << __demiradix__) + c
-        c = (z_j >>> __radix__) + (m >>> __demiradix__) + x_h*y_h
-        zs[j++] = z_j & __mask__
-
-        y_l = y_12 & __demimask__
-        y_h = y_12 >> __demiradix__
-        m = x_h*y_l + y_h*x_l
-        z_j = zs[j] + x_l*y_l + ((m & __demimask__) << __demiradix__) + c
-        c = (z_j >>> __radix__) + (m >>> __demiradix__) + x_h*y_h
-        zs[j++] = z_j & __mask__
-
-        y_l = y_13 & __demimask__
-        y_h = y_13 >> __demiradix__
-        m = x_h*y_l + y_h*x_l
-        z_j = zs[j] + x_l*y_l + ((m & __demimask__) << __demiradix__) + c
-        c = (z_j >>> __radix__) + (m >>> __demiradix__) + x_h*y_h
-        zs[j++] = z_j & __mask__
-
-        y_l = y_14 & __demimask__
-        y_h = y_14 >> __demiradix__
-        m = x_h*y_l + y_h*x_l
-        z_j = zs[j] + x_l*y_l + ((m & __demimask__) << __demiradix__) + c
-        c = (z_j >>> __radix__) + (m >>> __demiradix__) + x_h*y_h
-        zs[j++] = z_j & __mask__
-
-        y_l = y_15 & __demimask__
-        y_h = y_15 >> __demiradix__
-        m = x_h*y_l + y_h*x_l
-        z_j = zs[j] + x_l*y_l + ((m & __demimask__) << __demiradix__) + c
-        c = (z_j >>> __radix__) + (m >>> __demiradix__) + x_h*y_h
-        zs[j++] = z_j & __mask__
-
-        y_l = y_16 & __demimask__
-        y_h = y_16 >> __demiradix__
-        m = x_h*y_l + y_h*x_l
-        z_j = zs[j] + x_l*y_l + ((m & __demimask__) << __demiradix__) + c
-        c = (z_j >>> __radix__) + (m >>> __demiradix__) + x_h*y_h
-        zs[j++] = z_j & __mask__
-
-        y_l = y_17 & __demimask__
-        y_h = y_17 >> __demiradix__
-        m = x_h*y_l + y_h*x_l
-        z_j = zs[j] + x_l*y_l + ((m & __demimask__) << __demiradix__) + c
-        c = (z_j >>> __radix__) + (m >>> __demiradix__) + x_h*y_h
-        zs[j++] = z_j & __mask__
-
-        y_l = y_18 & __demimask__
-        y_h = y_18 >> __demiradix__
-        m = x_h*y_l + y_h*x_l
-        z_j = zs[j] + x_l*y_l + ((m & __demimask__) << __demiradix__) + c
-        c = (z_j >>> __radix__) + (m >>> __demiradix__) + x_h*y_h
-        zs[j++] = z_j & __mask__
-
-        y_l = y_19 & __demimask__
-        y_h = y_19 >> __demiradix__
-        m = x_h*y_l + y_h*x_l
-        z_j = zs[j] + x_l*y_l + ((m & __demimask__) << __demiradix__) + c
-        c = (z_j >>> __radix__) + (m >>> __demiradix__) + x_h*y_h
-        zs[j++] = z_j & __mask__
-
-        y_l = y_20 & __demimask__
-        y_h = y_20 >> __demiradix__
-        m = x_h*y_l + y_h*x_l
-        z_j = zs[j] + x_l*y_l + ((m & __demimask__) << __demiradix__) + c
-        c = (z_j >>> __radix__) + (m >>> __demiradix__) + x_h*y_h
-        zs[j++] = z_j & __mask__
-
-        y_l = y_21 & __demimask__
-        y_h = y_21 >> __demiradix__
-        m = x_h*y_l + y_h*x_l
-        z_j = zs[j] + x_l*y_l + ((m & __demimask__) << __demiradix__) + c
-        c = (z_j >>> __radix__) + (m >>> __demiradix__) + x_h*y_h
-        zs[j++] = z_j & __mask__
-
-        y_l = y_22 & __demimask__
-        y_h = y_22 >> __demiradix__
-        m = x_h*y_l + y_h*x_l
-        z_j = zs[j] + x_l*y_l + ((m & __demimask__) << __demiradix__) + c
-        c = (z_j >>> __radix__) + (m >>> __demiradix__) + x_h*y_h
-        zs[j++] = z_j & __mask__
-
-        y_l = y_23 & __demimask__
-        y_h = y_23 >> __demiradix__
-        m = x_h*y_l + y_h*x_l
-        z_j = zs[j] + x_l*y_l + ((m & __demimask__) << __demiradix__) + c
-        c = (z_j >>> __radix__) + (m >>> __demiradix__) + x_h*y_h
-        zs[j++] = z_j & __mask__
-
-        y_l = y_24 & __demimask__
-        y_h = y_24 >> __demiradix__
-        m = x_h*y_l + y_h*x_l
-        z_j = zs[j] + x_l*y_l + ((m & __demimask__) << __demiradix__) + c
-        c = (z_j >>> __radix__) + (m >>> __demiradix__) + x_h*y_h
-        zs[j++] = z_j & __mask__
-
-        y_l = y_25 & __demimask__
-        y_h = y_25 >> __demiradix__
-        m = x_h*y_l + y_h*x_l
-        z_j = zs[j] + x_l*y_l + ((m & __demimask__) << __demiradix__) + c
-        c = (z_j >>> __radix__) + (m >>> __demiradix__) + x_h*y_h
-        zs[j++] = z_j & __mask__
-
-        y_l = y_26 & __demimask__
-        y_h = y_26 >> __demiradix__
-        m = x_h*y_l + y_h*x_l
-        z_j = zs[j] + x_l*y_l + ((m & __demimask__) << __demiradix__) + c
-        c = (z_j >>> __radix__) + (m >>> __demiradix__) + x_h*y_h
-        zs[j++] = z_j & __mask__
-
-        y_l = y_27 & __demimask__
-        y_h = y_27 >> __demiradix__
-        m = x_h*y_l + y_h*x_l
-        z_j = zs[j] + x_l*y_l + ((m & __demimask__) << __demiradix__) + c
-        c = (z_j >>> __radix__) + (m >>> __demiradix__) + x_h*y_h
-        zs[j++] = z_j & __mask__
-
-        y_l = y_28 & __demimask__
-        y_h = y_28 >> __demiradix__
-        m = x_h*y_l + y_h*x_l
-        z_j = zs[j] + x_l*y_l + ((m & __demimask__) << __demiradix__) + c
-        c = (z_j >>> __radix__) + (m >>> __demiradix__) + x_h*y_h
-        zs[j++] = z_j & __mask__
-
-        y_l = y_29 & __demimask__
-        y_h = y_29 >> __demiradix__
-        m = x_h*y_l + y_h*x_l
-        z_j = zs[j] + x_l*y_l + ((m & __demimask__) << __demiradix__) + c
-        c = (z_j >>> __radix__) + (m >>> __demiradix__) + x_h*y_h
-        zs[j++] = z_j & __mask__
-
-        y_l = y_30 & __demimask__
-        y_h = y_30 >> __demiradix__
-        m = x_h*y_l + y_h*x_l
-        z_j = zs[j] + x_l*y_l + ((m & __demimask__) << __demiradix__) + c
-        c = (z_j >>> __radix__) + (m >>> __demiradix__) + x_h*y_h
-        zs[j++] = z_j & __mask__
-
-        y_l = y_31 & __demimask__
-        y_h = y_31 >> __demiradix__
-        m = x_h*y_l + y_h*x_l
-        z_j = zs[j] + x_l*y_l + ((m & __demimask__) << __demiradix__) + c
-        c = (z_j >>> __radix__) + (m >>> __demiradix__) + x_h*y_h
-        zs[j++] = z_j & __mask__
-
-        zs[j] = c
-    _trim zs
 
   _kmul = (xs, ys) ->
     n_xs = xs.length
     n_ys = ys.length
 
     if (k = min n_xs, n_ys) < Long__radix__.KaratsubaLimit
-      if n_ys is 32
-        _mul32 xs, ys
-      else
         _mul xs, ys
 
     else
-      k = (k & ~0x1f) >> 1
+      k >>= 1
 
       xs_l = xs.slice 0, k
       ys_l = ys.slice 0, k

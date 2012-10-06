@@ -1,0 +1,7 @@
+#!/bin/sh
+
+coffee specialize-mul.coffee
+coffee -c mul.coffee
+coffee -c mul-30-bit.coffee 
+coffee -c mul-28-bit.coffee 
+coffee -c mul-26-bit.coffee 
