@@ -53,7 +53,7 @@
   };
 
   Long = (function() {
-    var __mul, _add, _bit, _bitset, _bshl, _bshr, _divmod, _eq, _hex, _kmul, _lt, _mantissa, _mul, _mulA, _mulmod, _pow, _powmod, _repr, _shl, _shr, _size, _sub, _trim, _value, _width, _zeros;
+    var __mul, _add, _bit, _bitset, _bshl, _bshr, _div, _divmod, _eq, _hex, _kmul, _lt, _mantissa, _mod, _mul, _mulmod, _pow, _powmod, _repr, _shl, _shr, _size, _sub, _trim, _value, _width, _zeros;
 
     Long.KaratsubaLimit = 64;
 
@@ -158,7 +158,7 @@
       var i, j;
       j = k % 30;
       i = (k - j) / 30;
-      return (xs[i] || 0) >>> j;
+      return (xs[i] || 0) >>> j & 1;
     };
 
     _size = function(xs) {
@@ -256,32 +256,6 @@
     _trim = function(xs) {
       xs.length = _size(xs);
       return xs;
-    };
-
-    _mulA = function(xs, ys) {
-      var c, i, j, k, m, n, n_xs, n_ys, x_h, x_l, yh_i, yl_i, z_j, zs, _i;
-      n_xs = xs.length;
-      n_ys = ys.length;
-      zs = _zeros.slice(0, n_xs + n_ys);
-      if (n_xs > 0 && n_ys > 0) {
-        for (j = _i = 0; _i < n_xs; j = _i += 1) {
-          x_l = xs[j] & 0x7fff;
-          x_h = xs[j] >> 15;
-          i = c = 0;
-          k = j;
-          n = n_ys;
-          while (--n >= 0) {
-            yl_i = ys[i] & 0x7fff;
-            yh_i = ys[i++] >> 15;
-            m = x_h * yl_i + yh_i * x_l;
-            z_j = zs[j] + x_l * yl_i + ((m & 0x7fff) << 15) + c;
-            c = (z_j >>> 30) + (m >>> 15) + x_h * yh_i;
-            zs[j++] = z_j & 0x3fffffff;
-          }
-          zs[j] = c;
-        }
-      }
-      return _trim(zs);
     };
 
     __mul = function(xs, ys) {
@@ -413,6 +387,14 @@
       return [qs, _bshr(rs, k)];
     };
 
+    _div = function(xs, ys) {
+      return (_divmod(xs, ys))[0];
+    };
+
+    _mod = function(xs, ys) {
+      return (_divmod(xs, ys))[1];
+    };
+
     _pow = function(xs, k) {
       var zs;
       zs = [1];
@@ -509,6 +491,8 @@
       return 30;
     };
 
+    Long._zeros = _zeros;
+
     Long._repr = _repr;
 
     Long._hex = _hex;
@@ -535,6 +519,10 @@
 
     Long._divmod = _divmod;
 
+    Long._div = _div;
+
+    Long._mod = _mod;
+
     Long._mulmod = _mulmod;
 
     Long._powmod = _powmod;
@@ -548,6 +536,9 @@
     Long._bshr = _bshr;
 
     function Long(x) {
+      if ((typeof Residue !== "undefined" && Residue !== null) && x instanceof Residue) {
+        x = x.toLong();
+      }
       if (x instanceof Long) {
         this.digits = x.digits.slice();
         this.sign = x.sign;
@@ -577,11 +568,12 @@
     };
 
     Long.prototype.negate = function() {
-      if (_size(this.digits > 0)) {
-        return this.sign *= -1;
+      if ((_size(this.digits)) > 0) {
+        this.sign *= -1;
       } else {
-        return this.sign = 1;
+        this.sign = 1;
       }
+      return this;
     };
 
     Long.prototype.abs = function() {
@@ -672,6 +664,140 @@
 
     Long.prototype.mod = function(y) {
       return (this.divmod(y))[1];
+    };
+
+    Long.prototype.bit = function(k) {
+      return _bit(this.digits, k);
+    };
+
+    Long.prototype.eq = function(y) {
+      var sign_y, ys;
+      if (y instanceof Array) {
+        ys = y;
+        sign_y = 1;
+      } else {
+        if (!(y instanceof Long)) {
+          y = new Long(y);
+        }
+        ys = y.digits;
+        sign_y = y.sign;
+      }
+      return this.sign === sign_y && _eq(this.digits, ys);
+    };
+
+    Long.prototype.lt = function(y) {
+      var sign_y, ys;
+      if (y instanceof Array) {
+        ys = y;
+        sign_y = 1;
+      } else {
+        if (!(y instanceof Long)) {
+          y = new Long(y);
+        }
+        ys = y.digits;
+        sign_y = y.sign;
+      }
+      if (this.sign < sign_y) {
+        return true;
+      } else if (this.sign > sign_y) {
+        return false;
+      } else if (this.sign === 1) {
+        return _lt(this.digits, ys);
+      } else {
+        return _lt(ys, this.digits);
+      }
+    };
+
+    Long.prototype.gt = function(y) {
+      return (!(y instanceof Long) ? new Long(y) : void 0).lt(this);
+    };
+
+    Long.prototype.gte = function(y) {
+      return !this.lt(y);
+    };
+
+    Long.prototype.lte = function(y) {
+      return !this.gt(y);
+    };
+
+    Long.prototype.euclid = function(y) {
+      var a, b, c, d, g, u, v, x;
+      x = this;
+      if (!(y instanceof Long)) {
+        y = new Long(y);
+      }
+      g = new Long(1);
+      if ((x.eq([0])) || (y.eq([0]))) {
+        return [[0], [0], [Infinity]];
+      }
+      while ((x.bit(0)) === 0 && (y.bit(0)) === 0) {
+        x = x.bshr(1);
+        y = y.bshr(1);
+        g = g.bshl(1);
+      }
+      u = x;
+      v = y;
+      a = new Long(1);
+      b = new Long(0);
+      c = new Long(0);
+      d = new Long(1);
+      while (true) {
+        while ((u.bit(0)) === 0) {
+          u = u.bshr(1);
+          if ((a.bit(0)) === (b.bit(0))) {
+            a = a.bshr(1);
+            b = b.bshr(1);
+          } else {
+            a = (a.add(y)).bshr(1);
+            b = (b.sub(x)).bshr(1);
+          }
+        }
+        while ((v.bit(0)) === 0) {
+          v = v.bshr(1);
+          if ((c.bit(0)) === (d.bit(0))) {
+            c = c.bshr(1);
+            d = d.bshr(1);
+          } else {
+            c = (c.add(y)).bshr(1);
+            d = (d.sub(x)).bshr(1);
+          }
+        }
+        if (u.lt(v)) {
+          v = v.sub(u);
+          c = c.sub(a);
+          d = d.sub(b);
+        } else {
+          u = u.sub(v);
+          a = a.sub(c);
+          b = b.sub(d);
+        }
+        if (u.eq([0])) {
+          return [a, b, c, d, g, u, v];
+        }
+      }
+    };
+
+    Long.prototype.invmod = function(m) {
+      var a, b, c, d, g, u, v, _ref;
+      if (!(m instanceof Long)) {
+        m = new Long(m);
+      }
+      _ref = m.euclid(this), a = _ref[0], b = _ref[1], c = _ref[2], d = _ref[3], g = _ref[4], u = _ref[5], v = _ref[6];
+      if (!(g.mul(v)).eq([1])) {
+        return null;
+      } else {
+        if (d.lt([0])) {
+          return d.add(m);
+        } else {
+          return d;
+        }
+      }
+    };
+
+    Long.prototype.gcd = function(y) {
+      var a, b, c, d, g, u, v, _ref;
+      _ref = this.euclid(y), a = _ref[0], b = _ref[1], c = _ref[2], d = _ref[3], g = _ref[4], u = _ref[5], v = _ref[6];
+      return g.mul(v);
     };
 
     Long.prototype.pow = function(y) {

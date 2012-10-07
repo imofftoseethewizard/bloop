@@ -15,6 +15,7 @@ stackTrace = () ->
 assert = (cond) -> if not cond then throw stackTrace()
 
 class Long
+  #
   @KaratsubaLimit: 64
 
   _mantissa = do () ->
@@ -105,7 +106,7 @@ class Long
   _bit = (xs, k) ->
     j = k % __radix__
     i = (k - j)/__radix__
-    (xs[i] or 0) >>> j
+    (xs[i] or 0) >>> j & 1
 
   _size = (xs) ->
     i = xs.length-1
@@ -332,6 +333,10 @@ class Long
     [qs, _bshr rs, k]
 
 
+  _div = (xs, ys) -> (_divmod xs, ys)[0]
+  _mod = (xs, ys) -> (_divmod xs, ys)[1]
+
+
   _pow = (xs, k) ->
     zs = [1]
     xs = xs.slice()
@@ -418,6 +423,7 @@ class Long
   @_setRadix:  _setRadix
   ## %% End Remove for Specialize %%
   @_getRadix:  () -> __radix__
+  @_zeros:     _zeros
   @_repr:      _repr
   @_hex:       _hex
   @_size:      _size
@@ -431,6 +437,8 @@ class Long
   @_kmul:      _kmul
   @_pow:       _pow
   @_divmod:    _divmod
+  @_div:       _div
+  @_mod:       _mod
   @_mulmod:    _mulmod
   @_powmod:    _powmod
   @_shl:       _shl
@@ -439,6 +447,9 @@ class Long
   @_bshr:      _bshr
 
   constructor: (x) ->
+    if Residue? and x instanceof Residue
+      x = x.toLong()
+
     if x instanceof Long
       @digits = x.digits.slice()
       @sign = x.sign
@@ -464,10 +475,11 @@ class Long
       @valueOf().toString radix
 
   negate: () ->
-    if _size @digits > 0
+    if (_size @digits) > 0
       @sign *= -1
     else
       @sign = 1
+    this
 
   abs: () -> @sign = 1
 
@@ -549,6 +561,106 @@ class Long
 
   div: (y) -> (@divmod y)[0]
   mod: (y) -> (@divmod y)[1]
+
+  bit: (k) -> _bit @digits, k
+
+  eq: (y) ->
+    if y instanceof Array
+      ys = y
+      sign_y = 1
+    else
+      y = new Long y if not (y instanceof Long)
+      ys = y.digits
+      sign_y = y.sign
+
+
+    @sign is sign_y and _eq @digits, ys
+
+  lt: (y) ->
+    if y instanceof Array
+      ys = y
+      sign_y = 1
+    else
+      y = new Long y if not (y instanceof Long)
+      ys = y.digits
+      sign_y = y.sign
+
+    if @sign < sign_y then true
+    else if @sign > sign_y then false
+    else if @sign is 1 then _lt @digits, ys
+    else _lt ys, @digits
+
+  gt: (y) -> (new Long y if not (y instanceof Long)).lt this
+
+  gte: (y) -> not @lt y
+  lte: (y) -> not @gt y
+
+  euclid: (y) ->
+    x = this
+    y = new Long y if not (y instanceof Long)
+    g = new Long 1
+
+    if (x.eq [0]) or (y.eq [0]) then return [[0], [0], [Infinity]]
+
+    while (x.bit 0) is 0 and (y.bit 0) is 0
+      x = x.bshr 1
+      y = y.bshr 1
+      g = g.bshl 1
+
+    u = x
+    v = y
+    a = new Long 1
+    b = new Long 0
+    c = new Long 0
+    d = new Long 1
+
+    while true
+      while (u.bit 0) is 0
+        u = u.bshr 1
+        if (a.bit 0) is (b.bit 0)
+          a = a.bshr 1
+          b = b.bshr 1
+        else
+          a = (a.add y).bshr 1
+          b = (b.sub x).bshr 1
+
+      while (v.bit 0) is 0
+        v = v.bshr 1
+        if (c.bit 0) is (d.bit 0)
+          c = c.bshr 1
+          d = d.bshr 1
+        else
+          c = (c.add y).bshr 1
+          d = (d.sub x).bshr 1
+
+      if u.lt v
+        v = v.sub u
+        c = c.sub a
+        d = d.sub b
+      else
+        u = u.sub v
+        a = a.sub c
+        b = b.sub d
+
+      if u.eq [0]
+        return [a, b, c, d, g, u, v]
+
+
+  invmod: (m) ->
+    m = new Long m if not (m instanceof Long)
+
+    [a, b, c, d, g, u, v] = m.euclid this
+
+    if not (g.mul v).eq [1]
+      null
+    else
+      if d.lt [0] then d.add m else d
+
+
+  gcd: (y) ->
+    [a, b, c, d, g, u, v] = @euclid y
+    g.mul v
+
 
   pow: (y) ->
     y = Number y
