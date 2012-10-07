@@ -277,6 +277,8 @@ class Long
       t = (_size ys)-1
       k = n - t
 
+      if k < 0 then return [[0], xs]
+
       ys_t0 = ys[t]
       ys_t1 = ys[t-1] or 0
 

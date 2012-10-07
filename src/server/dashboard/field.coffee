@@ -1,3 +1,19 @@
+assert = do () ->
+
+  makeString = (ch, n) -> (ch for i in [0...n]).join ''
+  indents = do () -> (makeString ' ', i for i in [0...100])
+
+  stackTrace = () ->
+    try
+      (null)()
+    catch err
+      calls = (err.stack.split '\n').slice 3
+      calls.reverse()
+      lines = (indents[i] + call.slice 4 for call, i in calls)
+      lines.join '\n'
+
+  (cond) -> if not cond then throw stackTrace()
+
 class Residue
 
 class Field
@@ -5,39 +21,53 @@ class Field
   { _add, _div, _invmod, _lt, _mod, _mul, _shl, _shr, _size, _sub, _zeros } = Long
 
   # ((b - m) mod b)^-1 mod b
-  _cofactor = (ms) -> (((new Long [0, 1]).sub [ms[0]]).invmod [0, 1]).digits[0]
+  _cofactor = (ms) ->
+    w = ((new Long [0, 1]).sub [ms[0]]).invmod [0, 1]
+    ws = if w? then w.digits else [0]
+    ws
 
-  constructor: (M) ->             # HAC equivalent
-    @M  = M  = (new Long M if not (M instanceof Long)).digits
-                                  # m
-    @K  = K  = _size M            # t
-    @R  = R  = _shl [1], K        # R = b^K, where b is __base__
-    @R2 = R2 = _shl [1], 2*K      # R^2 = b^2*K
-    @W  = W  = _cofactor M        # m-prime
-
-    # for Barret reduction
-
-    @B  = B  = _div R2, M               # mu (per 14.42)
-    @Rb = Rb = _shl [1], K+1      # R = b^K+1
-
-    ## Precomputed values for pow
-
-    @R_M  = R_M  = _mod R, M
-    @R2_M = R2_M = _mod R2, M
-
+  constructor: (M) ->
+    M = (if M instanceof Long then M else new Long M).digits
 
     return class FieldResidue extends Residue
 
-      _modM = (xs) ->
-        qs = _shr (_mul (_shr xs.slice(), K-1), B), K+1
+                                    # HAC equivalent
+      @M  = M                       # m
+      @K  = K  = _size M            # t
+      @R  = R  = _shl [1], K        # R = b^K, where b is __base__
+      @R2 = R2 = _shl [1], 2*K      # R^2 = b^2*K
+      @W  = W  = _cofactor M        # m-prime
 
-        rs_1 = xs.slice 0, K+1
-        rs_2 = (_mul qs, M).slice 0, K+1
-        _add rs_1, Rb if _lt rs_1, rs_2
-        rs = _sub rs_1, rs_2
+      # for Barret reduction
 
-        while _lt M, rs then _sub rs, M
-        rs
+      @B  = B  = _div R2, M         # mu (per 14.42)
+      @Rb = Rb = _shl [1], K+1      # R = b^K+1
+
+      ## for pow
+
+      @R_M  = R_M  = _mod R, M
+      @R2_M = R2_M = _mod R2, M
+
+      _modM = do () ->
+        if _lt M, _shl [1], 1
+          (xs) -> _mod xs, M
+
+        else
+          (xs) ->
+            if (_size xs) >= 2*K
+              _mod xs, M
+
+            else
+              qs = _shr (_mul (_shr xs.slice(), K-1), B), K+1
+
+              rs_1 = xs.slice 0, K+1
+              rs_2 = (_mul qs, M).slice 0, K+1
+              _add rs_1, Rb if _lt rs_1, rs_2
+              assert not _lt rs_1, rs_2
+              rs = _sub rs_1, rs_2
+
+              while not _lt rs, M then _sub rs, M
+              rs
 
       _reduce = (xs) ->
         zs = []
@@ -78,6 +108,15 @@ class Field
           zs = _mont zs, ws if _bit ys, i
 
         _mont zs, [1]
+
+
+      @_modM:      _modM
+      @_reduce:    _reduce
+      @_toLong:    _toLong
+      @_toField:   _toField
+      @_negate:    _negate
+      @_mont:      _mont
+      @_pow:       _pow
 
 
       constructor: (x) ->
@@ -126,6 +165,46 @@ class Field
         z.digits = _pow @digits, y.digits
         z
 
+  @test: () ->
+    { floor, random } = Math
+
+    { _bshl, _eq, _repr } = Long
+
+    randomHex = do () ->
+      codex = do () -> i.toString(16) for i in [0...16]
+      (n) ->
+        (codex[floor 16*random()] for i in [1...n]).join ''
+
+    randomDigits = (bits) -> _repr randomHex bits >> 2
+    randomLong = (bits) -> new Long randomDigits bits
+
+
+    do () ->
+      Ms =
+
+      try
+        for ms in [[7], [65535], (new Long 2147483647).digits,
+                   (new Long 200560490131).digits, (_sub (_bshl [1], 61), 1),
+                   (randomDigits 100 for i in [0...15])...]
+          F = new Field ms
+          for xs in [[1], (_sub F.M.slice(), 1), (_add F.M.slice(), 1),
+                    (randomDigits 200 for i in [0...995])...]
+            expected = _mod xs, ms
+            actual = F._modM xs
+            assert _eq expected, actual
+
+      catch err
+        console.log 'Field modM test failed.'
+        console.log 'ms:', ms
+        console.log 'xs:', xs
+        console.log 'expected:', expected
+        console.log 'actual:', actual
+        console.log err
+        console.log err.message
+
+  @diagnose: () ->
+    xs = _repr '55e3ae083d0cbdfec136f83823c2d8ad457638380374d291c'
+    m = Long 2147483647
 
 window.Residue = Residue
 window.Field = Field
