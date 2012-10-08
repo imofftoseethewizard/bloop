@@ -16,7 +16,7 @@ assert = do () ->
 
 class Residue
 
-class Ring
+class RingMod
 
   { _add, _div, _lt, _mod, _mul, _shl, _shr, _size, _sub, _zeros } = Long
 
@@ -191,7 +191,7 @@ class Ring
       [[1], (_sub M.slice(), 1), (_add M.slice(), 1), (randomDigits 200 for i in [0...995])...]
 
     testRings = (N) ->
-      F for F in (new Ring ms for ms in testModuli N) when not _eq F.W, [0]
+      F for F in (new RingMod ms for ms in testModuli N) when not _eq F.W, [0]
 
 
     # do () ->
@@ -270,4 +270,4 @@ class Ring
     m = Long 2147483647
 
 window.Residue = Residue
-window.Ring = Ring
+window.RingMod = RingMod
