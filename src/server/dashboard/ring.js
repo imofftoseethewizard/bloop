@@ -165,7 +165,7 @@
           var i, u_i, x_i, y_0, zs, _i;
           zs = _zeros.slice(0, K);
           y_0 = ys[0];
-          for (i = _i = 0; 0 <= K ? _i < K : _i > K; i = 0 <= K ? ++_i : --_i) {
+          for (i = _i = 0; _i < K; i = _i += 1) {
             x_i = xs[i];
             u_i = (_add([xs[0]], _mul(_mul([x_i], [y_0]), W)))[0];
             _add(zs, _add(_mul(ys, [x_i]), _mul(M, [u_i])));
@@ -181,7 +181,7 @@
           var i, ws, zs, _i;
           ws = _mont(xs, R2_M);
           zs = R_M.slice();
-          for (i = _i = K; K <= 0 ? _i <= 0 : _i >= 0; i = K <= 0 ? ++_i : --_i) {
+          for (i = _i = K; _i >= 0; i = _i += -1) {
             zs = _mont(zs, zs);
             if (_bit(ys, i)) {
               zs = _mont(zs, ws);
@@ -264,7 +264,7 @@
             y = new RingResidue(y);
           }
           z = new RingResidue;
-          z.digits = _mont(this.digits, y.digits);
+          z.digits = _lift(_mul(this.digits, y.digits));
           return z;
         };
 
@@ -284,9 +284,9 @@
     }
 
     RingMod.test = function() {
-      var floor, random, randomDigits, randomHex, randomLong, testModuli, testResidues, testRings, _bshl, _eq, _repr;
+      var floor, random, randomDigits, randomHex, randomLong, testDigits, testModuli, testResidues, testRings, _bshl, _eq, _repr, _value;
       floor = Math.floor, random = Math.random;
-      _bshl = Long._bshl, _eq = Long._eq, _repr = Long._repr;
+      _bshl = Long._bshl, _eq = Long._eq, _repr = Long._repr, _value = Long._value;
       randomHex = (function() {
         var codex;
         codex = (function() {
@@ -327,7 +327,7 @@
             return _results;
           })()));
       };
-      testResidues = function(M) {
+      testDigits = function(M) {
         var i;
         return [[1], _sub(M.slice(), 1), _add(M.slice(), 1)].concat(__slice.call((function() {
             var _i, _results;
@@ -338,8 +338,18 @@
             return _results;
           })()));
       };
+      testResidues = function(R) {
+        var xs, _i, _len, _ref, _results;
+        _ref = testDigits(R.M);
+        _results = [];
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          xs = _ref[_i];
+          _results.push(new R(xs));
+        }
+        return _results;
+      };
       testRings = function(N) {
-        var F, ms, _i, _len, _ref, _results;
+        var R, ms, _i, _len, _ref, _results;
         _ref = (function() {
           var _j, _len, _ref, _results1;
           _ref = testModuli(N);
@@ -352,26 +362,26 @@
         })();
         _results = [];
         for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-          F = _ref[_i];
-          if (!_eq(F.W, [0])) {
-            _results.push(F);
+          R = _ref[_i];
+          if (!_eq(R.W, [0])) {
+            _results.push(R);
           }
         }
         return _results;
       };
       (function() {
-        var F, actual, expected, name, passed, xs, _i, _j, _len, _len1, _ref, _ref1;
+        var R, actual, expected, name, passed, xs, _i, _j, _len, _len1, _ref, _ref1;
         name = 'Barret reduction';
         passed = 0;
         try {
           _ref = testRings();
           for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-            F = _ref[_i];
-            _ref1 = testResidues(F.M);
+            R = _ref[_i];
+            _ref1 = testDigits(R.M);
             for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
               xs = _ref1[_j];
-              expected = _mod(xs, F.M);
-              actual = F._modM(xs);
+              expected = _mod(xs, R.M);
+              actual = R._modM(xs);
               assert(_eq(expected, actual));
               passed++;
             }
@@ -379,7 +389,7 @@
           return console.log(name + ': ' + passed);
         } catch (err) {
           console.log(name + ' test failed.');
-          console.log('M:', (F != null) && F.M);
+          console.log('M:', (R != null) && R.M);
           console.log('xs:', xs);
           console.log('expected:', expected);
           console.log('actual:', actual);
@@ -387,19 +397,19 @@
           return console.log(err.message);
         }
       })();
-      return (function() {
-        var F, actual, expected, name, passed, xs, _i, _j, _len, _len1, _lift, _reduce, _ref, _ref1;
+      (function() {
+        var R, actual, expected, name, passed, xs, _i, _j, _len, _len1, _lift, _reduce, _ref, _ref1;
         name = 'Montgomery lift-reduce consistency';
         passed = 0;
         try {
           _ref = testRings();
           for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-            F = _ref[_i];
-            _lift = F._lift, _reduce = F._reduce;
-            _ref1 = testResidues(F.M);
+            R = _ref[_i];
+            _lift = R._lift, _reduce = R._reduce;
+            _ref1 = testDigits(R.M);
             for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
               xs = _ref1[_j];
-              expected = _mod(xs, F.M);
+              expected = _mod(xs, R.M);
               actual = _lift(_reduce(xs.slice()));
               assert(_eq(expected, actual));
               passed++;
@@ -408,10 +418,86 @@
           return console.log(name + ': ' + passed);
         } catch (err) {
           console.log(name + ' test failed.');
-          console.log('F.M:', F.M);
+          console.log('R.M:', R.M);
           console.log('xs:', xs);
           console.log('expected:', expected);
           console.log('actual:', actual);
+          console.log(err);
+          return console.log(err.message);
+        }
+      })();
+      (function() {
+        var Rmod7, actual, expected, i, j, name, passed, x, y, _i, _j;
+        name = 'M = 7 multiplication consistency';
+        passed = 0;
+        try {
+          Rmod7 = new RingMod(7);
+          for (i = _i = 0; _i <= 7; i = ++_i) {
+            x = new Rmod7(i);
+            for (j = _j = 0; _j <= 7; j = ++_j) {
+              y = new Rmod7(j);
+              expected = ((new Long(x)).mul(y)).mod(7);
+              actual = new Long(x.mul(y));
+              assert(expected.eq(actual));
+              passed++;
+            }
+          }
+          return console.log(name + ': ' + passed);
+        } catch (err) {
+          console.log(name + ' test failed on pass ' + (passed + 1) + '.');
+          if (x != null) {
+            console.log('x:', x.valueOf());
+          }
+          if (y != null) {
+            console.log('y:', y.valueOf());
+          }
+          if (expected != null) {
+            console.log('expected:', expected.valueOf());
+          }
+          if (actual != null) {
+            console.log('actual:', actual.valueOf());
+          }
+          console.log(err);
+          return console.log(err.message);
+        }
+      })();
+      return (function() {
+        var L, R, actual, expected, i, name, passed, residues, x, y, _i, _j, _len, _ref;
+        name = 'multiplication consistency';
+        passed = 0;
+        try {
+          _ref = testRings();
+          for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+            R = _ref[_i];
+            residues = testResidues(R);
+            L = residues.length >> 1;
+            for (i = _j = 0; 0 <= L ? _j < L : _j > L; i = 0 <= L ? ++_j : --_j) {
+              x = residues[i];
+              y = residues[L + i];
+              expected = ((new Long(x)).mul(y)).mod(R.M);
+              actual = new Long(x.mul(y));
+              assert(expected.eq(actual));
+              passed++;
+            }
+          }
+          return console.log(name + ': ' + passed);
+        } catch (err) {
+          console.log(name + ' test failed on pass ' + (passed + 1) + '.');
+          if (R != null) {
+            console.log('M:', R.M.valueOf());
+          }
+          if (x != null) {
+            console.log('x:', x.valueOf());
+          }
+          if (y != null) {
+            console.log('y:', y.valueOf());
+          }
+          if (expected != null) {
+            console.log('expected:', expected.valueOf());
+          }
+          if (actual != null) {
+            console.log('actual:', actual.valueOf());
+          }
           console.log(err);
           return console.log(err.message);
         }

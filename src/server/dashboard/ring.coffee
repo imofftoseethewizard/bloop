@@ -92,7 +92,7 @@ class RingMod
         zs = _zeros.slice 0, K
 
         y_0 = ys[0]
-        for i in [0...K]
+        for i in [0...K] by 1
           x_i = xs[i]
           u_i = (_add [xs[0]], _mul (_mul [x_i], [y_0]), W)[0]
           _add zs, _add (_mul ys, [x_i]), _mul M, [u_i]
@@ -105,7 +105,7 @@ class RingMod
         ws = _mont xs, R2_M
         zs = R_M.slice()
 
-        for i in [K..0]
+        for i in [K..0] by -1
           zs = _mont zs, zs
           zs = _mont zs, ws if _bit ys, i
 
@@ -158,7 +158,7 @@ class RingMod
         y = new RingResidue y if not (y instanceof RingResidue)
         z = new RingResidue
 
-        z.digits = _mont @digits, y.digits
+        z.digits = _lift _mul @digits, y.digits
         z
 
       pow: (y) ->
@@ -171,7 +171,7 @@ class RingMod
   @test: () ->
     { floor, random } = Math
 
-    { _bshl, _eq, _repr } = Long
+    { _bshl, _eq, _repr, _value } = Long
 
     randomHex = do () ->
       codex = do () -> i.toString(16) for i in [0...16]
@@ -187,45 +187,23 @@ class RingMod
        (new Long 200560490131).digits, (_sub (_bshl [1], 61), 1),
        (randomDigits 100 for i in [0...N-5])...]
 
-    testResidues = (M) ->
+    testDigits = (M) ->
       [[1], (_sub M.slice(), 1), (_add M.slice(), 1), (randomDigits 200 for i in [0...995])...]
 
+    testResidues = (R) -> new R xs for xs in testDigits R.M
+
     testRings = (N) ->
-      F for F in (new RingMod ms for ms in testModuli N) when not _eq F.W, [0]
-
-
-    # do () ->
-    #   name = 'cofactor calculation '
-    #   passed = 0
-    #   try
-    #     for ms in testModuli()
-    #       cf = _cofactor ms
-
-    #         expected = _mod xs, F.M
-    #         actual = F._modM xs
-    #         assert _eq expected, actual
-    #         passed++
-
-    #     console.log name + ': ' + passed
-
-    #   catch err
-    #     console.log name + ' test failed.'
-    #     console.log 'ms:', ms
-    #     console.log 'xs:', xs
-    #     console.log 'expected:', expected
-    #     console.log 'actual:', actual
-    #     console.log err
-    #     console.log err.message
+      R for R in (new RingMod ms for ms in testModuli N) when not _eq R.W, [0]
 
 
     do () ->
       name = 'Barret reduction'
       passed = 0
       try
-        for F in testRings()
-          for xs in testResidues F.M
-            expected = _mod xs, F.M
-            actual = F._modM xs
+        for R in testRings()
+          for xs in testDigits R.M
+            expected = _mod xs, R.M
+            actual = R._modM xs
             assert _eq expected, actual
             passed++
 
@@ -233,7 +211,7 @@ class RingMod
 
       catch err
         console.log name + ' test failed.'
-        console.log 'M:', F? and F.M
+        console.log 'M:', R? and R.M
         console.log 'xs:', xs
         console.log 'expected:', expected
         console.log 'actual:', actual
@@ -245,10 +223,10 @@ class RingMod
       name = 'Montgomery lift-reduce consistency'
       passed = 0
       try
-        for F in testRings()
-          { _lift, _reduce } = F
-          for xs in testResidues F.M
-            expected = _mod xs, F.M
+        for R in testRings()
+          { _lift, _reduce } = R
+          for xs in testDigits R.M
+            expected = _mod xs, R.M
             actual = _lift _reduce xs.slice()
             assert _eq expected, actual
             passed++
@@ -257,10 +235,64 @@ class RingMod
 
       catch err
         console.log name + ' test failed.'
-        console.log 'F.M:', F.M
+        console.log 'R.M:', R.M
         console.log 'xs:', xs
         console.log 'expected:', expected
         console.log 'actual:', actual
+        console.log err
+        console.log err.message
+
+
+    do () ->
+      name = 'M = 7 multiplication consistency'
+      passed = 0
+      try
+        Rmod7 = new RingMod 7
+        for i in [0..7]
+          x = new Rmod7 i
+          for j in [0..7]
+            y = new Rmod7 j
+            expected = ((new Long x).mul y).mod 7
+            actual = new Long x.mul y
+            assert expected.eq actual
+            passed++
+
+        console.log name + ': ' + passed
+
+      catch err
+        console.log name + ' test failed on pass ' + (passed+1) + '.'
+        console.log 'x:', x.valueOf() if x?
+        console.log 'y:', y.valueOf() if y?
+        console.log 'expected:', expected.valueOf() if expected?
+        console.log 'actual:', actual.valueOf() if actual?
+        console.log err
+        console.log err.message
+
+
+    do () ->
+      name = 'multiplication consistency'
+      passed = 0
+      try
+        for R in testRings()
+          residues = testResidues R
+          L = residues.length >> 1
+          for i in [0...L]
+            x = residues[i]
+            y = residues[L+i]
+            expected = ((new Long x).mul y).mod R.M
+            actual = new Long x.mul y
+            assert expected.eq actual
+            passed++
+
+        console.log name + ': ' + passed
+
+      catch err
+        console.log name + ' test failed on pass ' + (passed+1) + '.'
+        console.log 'M:', R.M.valueOf() if R?
+        console.log 'x:', x.valueOf() if x?
+        console.log 'y:', y.valueOf() if y?
+        console.log 'expected:', expected.valueOf() if expected?
+        console.log 'actual:', actual.valueOf() if actual?
         console.log err
         console.log err.message
 
