@@ -337,7 +337,7 @@
     };
 
     _divmod = function(xs, ys) {
-      var c, divmod, k, qs, rs, y_t, _ref;
+      var c, divmod, k, qs, rs, ws, y_t, zs, _ref;
       divmod = function(xs, ys) {
         var b, b2, i, k, n, qs, t, vs, x_i0, x_i1, ys_t0, ys_t1, _i;
         b = 0x40000000;
@@ -357,19 +357,19 @@
           qs[k]++;
           _sub(xs, ys);
         }
-        for (i = _i = n; n <= t ? _i < t : _i > t; i = n <= t ? ++_i : --_i) {
+        for (i = _i = n; _i > t; i = _i += -1) {
           x_i0 = xs[i] || 0;
           x_i1 = xs[i - 1] || 0;
           if (x_i0 === ys_t0) {
             qs[i - t - 1] = 0x40000000 - 1;
           } else {
-            qs[i - t - 1] = (x_i0 * b + x_i1) / ys_t0 & 0x3fffffff;
+            qs[i - t - 1] = (round((x_i0 * b + x_i1) / ys_t0)) & 0x3fffffff;
           }
-          while (qs[i - t - 1] * (ys_t0 * b + ys_t1) > x_i0 * b2 + x_i1 * b + (xs[i - 2] || 0)) {
+          while (_lt([xs[i - 2], x_i1, x_i0], _mul([ys_t1, ys_t0], [qs[i - t - 1]]))) {
             qs[i - t - 1]--;
           }
           _shr(ys, 1);
-          vs = _mul(ys.slice(), [qs[i - t - 1]]);
+          vs = _mul(ys, [qs[i - t - 1]]);
           if (_lt(xs, vs)) {
             _add(xs, ys);
             qs[i - t - 1]--;
@@ -384,9 +384,10 @@
         c++;
       }
       k = 30 - c;
-      xs = _bshl(xs.slice(), k);
-      ys = _bshl(ys.slice(), k);
-      _ref = divmod(xs, ys), qs = _ref[0], rs = _ref[1];
+      ws = _bshl(xs.slice(), k);
+      zs = _bshl(ys.slice(), k);
+      _ref = divmod(ws, zs), qs = _ref[0], rs = _ref[1];
+      assert(_eq(xs, _add(_mul(qs, ys), _bshr(rs.slice(), k))));
       return [qs, _bshr(rs, k)];
     };
 
@@ -571,16 +572,17 @@
     };
 
     Long.prototype.negate = function() {
-      if ((_size(this.digits)) > 0) {
-        this.sign *= -1;
-      } else {
-        this.sign = 1;
-      }
-      return this;
+      var z;
+      z = new Long(this);
+      z.sign = (_size(z.digits)) > 0 ? -1 * z.sign : 1;
+      return z;
     };
 
     Long.prototype.abs = function() {
-      return this.sign = 1;
+      var z;
+      z = new Long(this);
+      z.sign = 1;
+      return z;
     };
 
     Long.prototype.add = function(y) {
@@ -637,26 +639,29 @@
     };
 
     Long.prototype.divmod = function(y) {
-      var q, qs, r, rs, xs, ys, _ref;
+      var q, qs, r, rs, x, xs, ys, _ref;
+      x = this;
       if (!(y instanceof Long)) {
         y = new Long(y);
       }
-      xs = this.digits;
+      xs = x.digits;
       ys = y.digits;
       if ((_size(ys)) === 0) {
         return [Infinity, new Long];
       } else {
         _ref = _divmod(xs, ys), qs = _ref[0], rs = _ref[1];
+        assert(_eq(xs, _add(_mul(qs, ys), rs)));
         q = new Long(qs);
         r = new Long(rs);
-        q.sign = this.sign * y.sign;
-        if (this.sign < 0 && (_size(rs)) > 0) {
+        q.sign = x.sign * y.sign;
+        if (x.sign < 0 && (_size(rs)) > 0) {
           r.digits = _sub(ys.slice(), rs);
           _add(qs, [1]);
         }
         if ((_size(q.digits)) === 0 && q.sign === -1) {
           q.sign = 1;
         }
+        assert(x.eq(r.add(y.mul(q))));
         return [q, r];
       }
     };
@@ -723,56 +728,60 @@
       return !this.gt(y);
     };
 
-    Long.prototype.euclid = function(y) {
+    Long.prototype.extendedGcd = function(y) {
       var a, b, c, d, g, u, v, x;
-      x = this;
-      if (!(y instanceof Long)) {
-        y = new Long(y);
-      }
-      g = new Long(1);
-      if ((x.eq([0])) || (y.eq([0]))) {
-        return [[0], [0], [Infinity]];
-      }
-      while ((x.bit(0)) === 0 && (y.bit(0)) === 0) {
-        x = x.bshr(1);
-        y = y.bshr(1);
-        g = g.bshl(1);
-      }
-      u = x;
-      v = y;
       a = new Long(1);
       b = new Long(0);
       c = new Long(0);
       d = new Long(1);
+      g = new Long(1);
+      u = new Long(0);
+      v = new Long(0);
+      x = this;
+      if (!(y instanceof Long)) {
+        y = new Long(y);
+      }
+      if ((x.eq([0])) || (y.eq([0]))) {
+        return [a, b, c, d, Infinity, u, v];
+      }
+      while ((x.bit(0)) === 0 && (y.bit(0)) === 0) {
+        x = x.bshr(1);
+        y = y.bshr(1);
+        g = g.mul(2);
+      }
+      u = x;
+      v = y;
       while (true) {
         while ((u.bit(0)) === 0) {
           u = u.bshr(1);
-          if ((a.bit(0)) === (b.bit(0))) {
+          if ((a.bit(0)) === 0 && (b.bit(0)) === 0) {
             a = a.bshr(1);
             b = b.bshr(1);
           } else {
             a = (a.add(y)).bshr(1);
             b = (b.sub(x)).bshr(1);
           }
+          assert(u.eq((a.mul(x)).add(b.mul(y))));
         }
         while ((v.bit(0)) === 0) {
           v = v.bshr(1);
-          if ((c.bit(0)) === (d.bit(0))) {
+          if ((c.bit(0)) === 0 && (d.bit(0)) === 0) {
             c = c.bshr(1);
             d = d.bshr(1);
           } else {
             c = (c.add(y)).bshr(1);
             d = (d.sub(x)).bshr(1);
           }
+          assert(v.eq((c.mul(x)).add(d.mul(y))));
         }
-        if (u.lt(v)) {
-          v = v.sub(u);
-          c = c.sub(a);
-          d = d.sub(b);
-        } else {
+        if (u.gte(v)) {
           u = u.sub(v);
           a = a.sub(c);
           b = b.sub(d);
+        } else {
+          v = v.sub(u);
+          c = c.sub(a);
+          d = d.sub(b);
         }
         if (u.eq([0])) {
           return [a, b, c, d, g, u, v];
@@ -785,22 +794,32 @@
       if (!(m instanceof Long)) {
         m = new Long(m);
       }
-      _ref = m.euclid(this), a = _ref[0], b = _ref[1], c = _ref[2], d = _ref[3], g = _ref[4], u = _ref[5], v = _ref[6];
-      if (!(g.mul(v)).eq([1])) {
+      if ((m = m.abs()).lte([1])) {
         return null;
       } else {
-        if (d.lt([0])) {
-          return d.add(m);
+        _ref = m.extendedGcd(this.abs()), a = _ref[0], b = _ref[1], c = _ref[2], d = _ref[3], g = _ref[4], u = _ref[5], v = _ref[6];
+        if (g === Infinity || !(g.mul(v)).eq([1])) {
+          return null;
         } else {
+          if (d.lt([0])) {
+            d = d.add(m);
+          }
+          if (this.sign < 0) {
+            d = m.sub(d);
+          }
           return d;
         }
       }
     };
 
     Long.prototype.gcd = function(y) {
-      var a, b, c, d, g, u, v, _ref;
-      _ref = this.euclid(y), a = _ref[0], b = _ref[1], c = _ref[2], d = _ref[3], g = _ref[4], u = _ref[5], v = _ref[6];
-      return g.mul(v);
+      var a, b, c, d, g, h, u, v, _ref;
+      if (!(y instanceof Long)) {
+        y = new Long(y);
+      }
+      _ref = this.abs().extendedGcd(y.abs()), a = _ref[0], b = _ref[1], c = _ref[2], d = _ref[3], g = _ref[4], u = _ref[5], v = _ref[6];
+      h = g === Infinity ? new Long : g.mul(v);
+      return h;
     };
 
     Long.prototype.pow = function(y) {
@@ -845,19 +864,35 @@
     };
 
     Long.prototype.shl = function(k) {
-      return new Long(_shl(this.digits.slice(), k));
+      var z;
+      z = new Long;
+      z.digits = _shl(this.digits.slice(), k);
+      z.sign = this.sign;
+      return z;
     };
 
     Long.prototype.shr = function(k) {
-      return new Long(_shr(this.digits.slice(), k));
+      var z;
+      z = new Long;
+      z.digits = _shr(this.digits.slice(), k);
+      z.sign = this.sign;
+      return z;
     };
 
     Long.prototype.bshl = function(k) {
-      return new Long(_bshl(this.digits.slice(), k));
+      var z;
+      z = new Long;
+      z.digits = _bshl(this.digits.slice(), k);
+      z.sign = this.sign;
+      return z;
     };
 
     Long.prototype.bshr = function(k) {
-      return new Long(_bshr(this.digits.slice(), k));
+      var z;
+      z = new Long;
+      z.digits = _bshr(this.digits.slice(), k);
+      z.sign = this.sign;
+      return z;
     };
 
     Long.test = function() {
@@ -1251,6 +1286,8 @@
           }
         }
       }
+      this.test.divmod();
+      this.test.invmod();
       for (i = _v = 0; _v < 100; i = ++_v) {
         _ref17 = [2, 5];
         for (_w = 0, _len = _ref17.length; _w < _len; _w++) {
@@ -1316,6 +1353,138 @@
       return void 0;
     };
 
+    Long.test.divmod = function() {
+      var C, actual, bits, expected, i, j, m, name, passed, q, r, randomDigits, randomHex, randomLong, x, _i, _j, _k, _ref;
+      randomHex = (function() {
+        var codex;
+        codex = (function() {
+          var i, _i, _results;
+          _results = [];
+          for (i = _i = 0; _i < 16; i = ++_i) {
+            _results.push(i.toString(16));
+          }
+          return _results;
+        })();
+        return function(n) {
+          var i;
+          return ((function() {
+            var _i, _results;
+            _results = [];
+            for (i = _i = 1; 1 <= n ? _i < n : _i > n; i = 1 <= n ? ++_i : --_i) {
+              _results.push(codex[floor(16 * random())]);
+            }
+            return _results;
+          })()).join('');
+        };
+      })();
+      randomDigits = function(bits) {
+        return _repr(randomHex(bits >> 2));
+      };
+      randomLong = function(bits) {
+        return new Long(randomDigits(bits));
+      };
+      name = 'divmod basic functionality';
+      passed = 0;
+      try {
+        for (bits = _i = 12; _i <= 60; bits = _i += 4) {
+          for (i = _j = 0; _j < 30; i = ++_j) {
+            m = randomLong(bits);
+            C = new Long(_bshl([1], bits));
+            for (j = _k = 0; _k < 30; j = ++_k) {
+              x = (randomLong(bits + 1)).add(C);
+              _ref = x.divmod(m), q = _ref[0], r = _ref[1];
+              actual = r.add(m.mul(q));
+              expected = x;
+              assert(actual.eq(expected));
+              passed++;
+            }
+          }
+        }
+        return console.log(name + ': ' + passed);
+      } catch (err) {
+        console.log(name + ' test failed.');
+        console.log('m:', (m != null) && m.valueOf());
+        console.log('x:', (x != null) && x.valueOf());
+        console.log('q:', (q != null) && q.valueOf());
+        console.log('r:', (r != null) && r.valueOf());
+        console.log('expected:', expected);
+        console.log('actual:', (actual != null) && actual.valueOf());
+        console.log(err);
+        return console.log(err.message);
+      }
+    };
+
+    Long.test.invmod = function() {
+      var C, actual, bits, expected, i, j, m, name, passed, randomDigits, randomHex, randomLong, x, x_inv, xx_inv, _i, _j, _k;
+      randomHex = (function() {
+        var codex;
+        codex = (function() {
+          var i, _i, _results;
+          _results = [];
+          for (i = _i = 0; _i < 16; i = ++_i) {
+            _results.push(i.toString(16));
+          }
+          return _results;
+        })();
+        return function(n) {
+          var i;
+          return ((function() {
+            var _i, _results;
+            _results = [];
+            for (i = _i = 1; 1 <= n ? _i < n : _i > n; i = 1 <= n ? ++_i : --_i) {
+              _results.push(codex[floor(16 * random())]);
+            }
+            return _results;
+          })()).join('');
+        };
+      })();
+      randomDigits = function(bits) {
+        return _repr(randomHex(bits >> 2));
+      };
+      randomLong = function(bits) {
+        return new Long(randomDigits(bits));
+      };
+      name = 'invmod basic functionality';
+      passed = 0;
+      try {
+        for (bits = _i = 12; _i <= 60; bits = _i += 4) {
+          for (i = _j = 0; _j < 30; i = ++_j) {
+            m = randomLong(bits);
+            C = new Long(_bshl([1], bits));
+            for (j = _k = 0; _k < 30; j = ++_k) {
+              x = (randomLong(bits + 1)).add(C);
+              x_inv = x.invmod(m);
+              if (x_inv != null) {
+                xx_inv = x.mul(x_inv);
+                actual = xx_inv.mod(m);
+                expected = [1];
+                assert(actual.eq(expected));
+              } else if (m.abs().lte([1])) {
+                actual = x_inv;
+                expected = false;
+              } else {
+                actual = x.gcd(m);
+                expected = 'greater than 1';
+                assert(actual.gt([1]));
+              }
+              passed++;
+            }
+          }
+        }
+        return console.log(name + ': ' + passed);
+      } catch (err) {
+        console.log(name + ' test failed.');
+        console.log('m:', (m != null) && m.valueOf());
+        console.log('x:', (x != null) && x.valueOf());
+        console.log('x_inv:', (x_inv != null) && x_inv.valueOf());
+        console.log('xx_inv:', (xx_inv != null) && xx_inv.valueOf());
+        console.log('expected:', expected);
+        console.log('actual:', (actual != null) && actual.valueOf());
+        console.log(err);
+        return console.log(err.message);
+      }
+    };
+
     Long.testKaratsubaThreshold = function() {
       var H, K, codex, endKaratsuba, endNaive, i, j, randomHex, startKaratsuba, startNaive, _i, _j;
       codex = (function() {
@@ -1365,6 +1534,40 @@
       endNaive = new Date;
       console.log('Naive', endNaive - startNaive);
       return console.log('Karatsuba', endKaratsuba - startKaratsuba);
+    };
+
+    Long.diagnose = function() {
+      var J, K, i, x, xs, y, ys, _i, _j, _ref, _ref1;
+      x = new Long(70291730349);
+      y = new Long(1353405651);
+      xs = x.digits;
+      ys = y.digits;
+      J = 30 * _size(ys);
+      for (i = _i = _ref = J - 1; _i >= 0; i = _i += -1) {
+        if (_bit(ys, i)) {
+          try {
+            _bitset(ys, i, 0);
+            _divmod(xs, ys);
+            _bitset(ys, i, 1);
+          } catch (err) {
+
+          }
+        }
+      }
+      K = 30 * _size(ys);
+      for (i = _j = _ref1 = K - 1; _j >= 0; i = _j += -1) {
+        if (_bit(xs, i)) {
+          try {
+            _bitset(xs, i, 0);
+            _divmod(xs, xs);
+            _bitset(xs, i, 1);
+          } catch (err) {
+
+          }
+        }
+      }
+      console.log('xs', _hex(xs));
+      return console.log('ys', _hex(ys));
     };
 
     return Long;

@@ -293,7 +293,7 @@ class Long
         _sub xs, ys
 
       # 14.20.3
-      for i in [n...t]
+      for i in [n...t] by -1
         x_i0 = xs[i]   or 0
         x_i1 = xs[i-1] or 0
 
@@ -302,15 +302,37 @@ class Long
           qs[i-t-1] = __base__ - 1
 
         else
-          qs[i-t-1] = (x_i0 * b + x_i1) / ys_t0 & __mask__
+          # While HAC 14.20.3.1 has floor where round is below, and while this is ideally correct,
+          # in the world of slightly inaccurate floating point numbers, this is unfortunately too
+          # sharp of an estimate to keep the estimated quotient reliably above the true quotient.
+          #
+          # Ex. On linux running Chromium 18.0.1025.168 with 28-bit wide digits,
+          #
+          #   xs = 4478077875
+          #   ys = 144756289
+          #
+          # produces the remainder 144756290 because the estimate for qs[0] is too low: on the
+          # second and final iteration of the loop, the expression
+          #
+          #   (x_i0 * b + x_i1) / ys_t0
+          #
+          # yields 248970242.99999997 when the true digit should be 248970243.
+          #
+          qs[i-t-1] = (round (x_i0 * b + x_i1) / ys_t0) & __mask__
 
         # 14.20.3.2
-        while qs[i-t-1] * (ys_t0 * b + ys_t1) > x_i0 * b2 + x_i1 * b + (xs[i-2] or 0)
+        #
+        # Javascript generally only has 53 bits of mantissa.  Each of the operands to the
+        # comparator below could be as wide as 3*__radix__.  That would limit __radix__ to 17 or
+        # less, resulting in much diminished performance.  Hence the computation is carried out in
+        # Long instead.
+        #
+        while _lt [xs[i-2], x_i1, x_i0], _mul [ys_t1, ys_t0], [qs[i-t-1]]
           qs[i-t-1]--
 
         # 14.20.3.3-4
         _shr ys, 1
-        vs = _mul ys.slice(), [qs[i-t-1]]
+        vs = _mul ys, [qs[i-t-1]]
         if _lt xs, vs
           _add xs, ys
           qs[i-t-1]--
@@ -327,10 +349,12 @@ class Long
     while (y_t >>= 1) > 0 then c++
 
     k = __radix__ - c
-    xs = _bshl xs.slice(), k
-    ys = _bshl ys.slice(), k
+    ws = _bshl xs.slice(), k
+    zs = _bshl ys.slice(), k
 
-    [qs, rs] = divmod xs, ys
+    [qs, rs] = divmod ws, zs
+
+    # assert _eq xs, _add (_mul qs, ys), _bshr rs.slice(), k
 
     [qs, _bshr rs, k]
 
@@ -477,13 +501,16 @@ class Long
       @valueOf().toString radix
 
   negate: () ->
-    if (_size @digits) > 0
-      @sign *= -1
-    else
-      @sign = 1
-    this
+    z = new Long this
+    z.sign = if (_size z.digits) > 0 then -1 * z.sign else 1
+    z
 
-  abs: () -> @sign = 1
+
+  abs: () ->
+    z = new Long this
+    z.sign = 1
+    z
+
 
   add: (y) ->
     x = this
@@ -530,9 +557,10 @@ class Long
 
 
   divmod: (y) ->
+    x = this
     y = new Long y if not (y instanceof Long)
 
-    xs = @digits
+    xs = x.digits
     ys = y.digits
 
     if (_size ys) is 0
@@ -540,25 +568,27 @@ class Long
 
     else
       [qs, rs] = _divmod xs, ys
+      # assert _eq xs, _add (_mul qs, ys), rs
 
       q = new Long qs
       r = new Long rs
 
-      # Euclidean Division convention:
+      # Euclidean division convention:
       #   0 <= r < q
       #   sign q is @sign for positive y
       #   sign q is -@sign for negative y
       #
 
-      q.sign = @sign * y.sign
+      q.sign = x.sign * y.sign
 
-      if @sign < 0 and (_size rs) > 0
+      if x.sign < 0 and (_size rs) > 0
         r.digits = _sub ys.slice(), rs
         _add qs, [1]
 
       if (_size q.digits) is 0 and q.sign is -1
         q.sign = 1
 
+      # assert x.eq r.add y.mul q
       [q, r]
 
   div: (y) -> (@divmod y)[0]
@@ -597,52 +627,59 @@ class Long
   gte: (y) -> not @lt y
   lte: (y) -> not @gt y
 
-  euclid: (y) ->
-    x = this
-    y = new Long y if not (y instanceof Long)
-    g = new Long 1
-
-    if (x.eq [0]) or (y.eq [0]) then return [[0], [0], [Infinity]]
-
-    while (x.bit 0) is 0 and (y.bit 0) is 0
-      x = x.bshr 1
-      y = y.bshr 1
-      g = g.bshl 1
-
-    u = x
-    v = y
+  extendedGcd: (y) ->
     a = new Long 1
     b = new Long 0
     c = new Long 0
     d = new Long 1
 
+    g = new Long 1
+
+    u = new Long 0
+    v = new Long 0
+
+    x = this
+    y = new Long y if not (y instanceof Long)
+
+    if (x.eq [0]) or (y.eq [0]) then return [a, b, c, d, Infinity, u, v]
+
+    while (x.bit 0) is 0 and (y.bit 0) is 0
+      x = x.bshr 1
+      y = y.bshr 1
+      g = g.mul 2
+
+    u = x
+    v = y
+
     while true
       while (u.bit 0) is 0
         u = u.bshr 1
-        if (a.bit 0) is (b.bit 0)
+        if (a.bit 0) is 0 and (b.bit 0) is 0
           a = a.bshr 1
           b = b.bshr 1
         else
           a = (a.add y).bshr 1
           b = (b.sub x).bshr 1
+        # assert u.eq (a.mul x).add b.mul y
 
       while (v.bit 0) is 0
         v = v.bshr 1
-        if (c.bit 0) is (d.bit 0)
+        if (c.bit 0) is 0 and (d.bit 0) is 0
           c = c.bshr 1
           d = d.bshr 1
         else
           c = (c.add y).bshr 1
           d = (d.sub x).bshr 1
+        # assert v.eq (c.mul x).add d.mul y
 
-      if u.lt v
-        v = v.sub u
-        c = c.sub a
-        d = d.sub b
-      else
+      if u.gte v
         u = u.sub v
         a = a.sub c
         b = b.sub d
+      else
+        v = v.sub u
+        c = c.sub a
+        d = d.sub b
 
       if u.eq [0]
         return [a, b, c, d, g, u, v]
@@ -651,17 +688,24 @@ class Long
   invmod: (m) ->
     m = new Long m if not (m instanceof Long)
 
-    [a, b, c, d, g, u, v] = m.euclid this
-
-    if not (g.mul v).eq [1]
+    if (m = m.abs()).lte [1]
       null
     else
-      if d.lt [0] then d.add m else d
+      [a, b, c, d, g, u, v] = m.extendedGcd @abs()
+
+      if g is Infinity or not (g.mul v).eq [1]
+        null
+      else
+        d = d.add m if d.lt [0]
+        d = m.sub d if @sign < 0
+        d
 
 
   gcd: (y) ->
-    [a, b, c, d, g, u, v] = @euclid y
-    g.mul v
+    y = new Long y if not (y instanceof Long)
+    [a, b, c, d, g, u, v] = @abs().extendedGcd y.abs()
+    h = if g is Infinity then new Long else g.mul v
+    h
 
 
   pow: (y) ->
@@ -694,10 +738,30 @@ class Long
     new Long zs
 
 
-  shl:  (k) -> new Long _shl  @digits.slice(), k
-  shr:  (k) -> new Long _shr  @digits.slice(), k
-  bshl: (k) -> new Long _bshl @digits.slice(), k
-  bshr: (k) -> new Long _bshr @digits.slice(), k
+  shl: (k) ->
+    z = new Long
+    z.digits = _shl  @digits.slice(), k
+    z.sign = @sign
+    z
+
+  shr: (k) ->
+    z = new Long
+    z.digits = _shr  @digits.slice(), k
+    z.sign = @sign
+    z
+
+  bshl: (k) ->
+    z = new Long
+    z.digits = _bshl  @digits.slice(), k
+    z.sign = @sign
+    z
+
+  bshr: (k) ->
+    z = new Long
+    z.digits = _bshr  @digits.slice(), k
+    z.sign = @sign
+    z
+
 
   @test: () ->
     do () ->
@@ -1047,6 +1111,8 @@ class Long
           console.log err.message
           N = 0
 
+    @test.divmod()
+    @test.invmod()
 
     for i in [0...100]
       for k in [2, 5]
@@ -1111,6 +1177,94 @@ class Long
 
 
     undefined
+
+
+  @test.divmod = () ->
+    randomHex = do () ->
+      codex = do () -> i.toString(16) for i in [0...16]
+      (n) ->
+        (codex[floor 16*random()] for i in [1...n]).join ''
+
+    randomDigits = (bits) -> _repr randomHex bits >> 2
+    randomLong = (bits) -> new Long randomDigits bits
+
+    name = 'divmod basic functionality'
+    passed = 0
+    try
+      for bits in [12..60] by 4
+        for i in [0...30]
+          m = randomLong bits
+          C = new Long _bshl [1], bits
+          for j in [0...30]
+            x = (randomLong bits+1).add C
+            [q, r] = x.divmod m
+            actual = r.add m.mul q
+            expected = x
+            assert actual.eq expected
+
+            passed++
+
+      console.log name + ': ' + passed
+
+    catch err
+      console.log name + ' test failed.'
+      console.log 'm:', m? and m.valueOf()
+      console.log 'x:', x? and x.valueOf()
+      console.log 'q:', q? and q.valueOf()
+      console.log 'r:', r? and r.valueOf()
+      console.log 'expected:', expected
+      console.log 'actual:', actual? and actual.valueOf()
+      console.log err
+      console.log err.message
+
+
+  @test.invmod = () ->
+    randomHex = do () ->
+      codex = do () -> i.toString(16) for i in [0...16]
+      (n) ->
+        (codex[floor 16*random()] for i in [1...n]).join ''
+
+    randomDigits = (bits) -> _repr randomHex bits >> 2
+    randomLong = (bits) -> new Long randomDigits bits
+
+    name = 'invmod basic functionality'
+    passed = 0
+    try
+      for bits in [12..60] by 4
+        for i in [0...30]
+          m = randomLong bits
+          C = new Long _bshl [1], bits
+          for j in [0...30]
+            x = (randomLong bits+1).add C
+            x_inv = x.invmod m
+            if x_inv?
+              xx_inv = x.mul x_inv
+              actual = xx_inv.mod m
+              expected = [1]
+              assert actual.eq expected
+            else if m.abs().lte [1]
+              actual = x_inv
+              expected = false
+            else
+              actual = x.gcd m
+              expected = 'greater than 1'
+              assert actual.gt [1]
+
+            passed++
+
+      console.log name + ': ' + passed
+
+    catch err
+      console.log name + ' test failed.'
+      console.log 'm:', m? and m.valueOf()
+      console.log 'x:', x? and x.valueOf()
+      console.log 'x_inv:', x_inv? and x_inv.valueOf()
+      console.log 'xx_inv:', xx_inv? and xx_inv.valueOf()
+      console.log 'expected:', expected
+      console.log 'actual:', actual? and actual.valueOf()
+      console.log err
+      console.log err.message
+
 
   @testKaratsubaThreshold: () ->
     # Performance on a Dell E4300 Linux Chromium platform while performing 100 4096-bit

@@ -18,13 +18,15 @@ class Residue
 
 class Field
 
-  { _add, _div, _invmod, _lt, _mod, _mul, _shl, _shr, _size, _sub, _zeros } = Long
+  { _add, _div, _lt, _mod, _mul, _shl, _shr, _size, _sub, _zeros } = Long
 
-  # ((b - m) mod b)^-1 mod b
+  # (- M)^-1 mod b
   _cofactor = (ms) ->
-    w = ((new Long [0, 1]).sub [ms[0]]).invmod [0, 1]
+    w = (new Long ms).negate().invmod [0, 1]
     ws = if w? then w.digits else [0]
     ws
+
+  @_cofactor = _cofactor
 
   constructor: (M) ->
     M = (if M instanceof Long then M else new Long M).digits
@@ -69,20 +71,22 @@ class Field
               while not _lt rs, M then _sub rs, M
               rs
 
+      _lift = (xs) -> _modM _shl xs.slice(), K
+
       _reduce = (xs) ->
         zs = []
 
         for i in [0...K]                      # 14.32.2
-          u_i = (_mul [xs[i]], [W])[0]        # 14.32.2.1  u_i = (x_i * w) mod b
+          u_i = (_mul [xs[i]], W)[0]          # 14.32.2.1  u_i = (x_i * w) mod b
           _add zs, _shl (_mul M, [u_i]), i    # 14.32.2.2  zs = zs + (u_i * b^i) * ms
 
         _shr zs, K                            # 14.32.3    zs = zs / b^k
         _sub zs, M if not _lt zs, M           # 14.32.4    if zs > ms then zs = ms - zs
         zs
 
-      _toField = (xs) -> _modM _shl xs.slice(), K
+      _toField = (xs) -> _reduce xs
 
-      _toLong = (xs) -> _reduce xs
+      _toLong = (xs) -> _lift xs
 
       _negate = (xs) -> if _eq xs, [0] then xs else _sub M.slice(), xs
 
@@ -92,7 +96,7 @@ class Field
         y_0 = ys[0]
         for i in [0...K]
           x_i = xs[i]
-          u_i = (_add [xs[0]], _mul (_mul [x_i], [y_0]), [W])[0]
+          u_i = (_add [xs[0]], _mul (_mul [x_i], [y_0]), W)[0]
           _add zs, _add (_mul ys, [x_i]), _mul M, [u_i]
           _shr zs, 1
 
@@ -111,6 +115,7 @@ class Field
 
 
       @_modM:      _modM
+      @_lift:      _lift
       @_reduce:    _reduce
       @_toLong:    _toLong
       @_toField:   _toField
@@ -178,29 +183,89 @@ class Field
     randomDigits = (bits) -> _repr randomHex bits >> 2
     randomLong = (bits) -> new Long randomDigits bits
 
+    testModuli = (N) ->
+      N or= 15
+      [[7], [65535], (new Long 2147483647).digits,
+       (new Long 200560490131).digits, (_sub (_bshl [1], 61), 1),
+       (randomDigits 100 for i in [0...N-5])...]
+
+    testResidues = (M) ->
+      [[1], (_sub M.slice(), 1), (_add M.slice(), 1), (randomDigits 200 for i in [0...995])...]
+
+    testFields = (N) ->
+      F for F in (new Field ms for ms in testModuli N) when not _eq F.W, [0]
+
+
+    # do () ->
+    #   name = 'cofactor calculation '
+    #   passed = 0
+    #   try
+    #     for ms in testModuli()
+    #       cf = _cofactor ms
+
+    #         expected = _mod xs, F.M
+    #         actual = F._modM xs
+    #         assert _eq expected, actual
+    #         passed++
+
+    #     console.log name + ': ' + passed
+
+    #   catch err
+    #     console.log name + ' test failed.'
+    #     console.log 'ms:', ms
+    #     console.log 'xs:', xs
+    #     console.log 'expected:', expected
+    #     console.log 'actual:', actual
+    #     console.log err
+    #     console.log err.message
+
 
     do () ->
-      Ms =
-
+      name = 'Barret reduction'
+      passed = 0
       try
-        for ms in [[7], [65535], (new Long 2147483647).digits,
-                   (new Long 200560490131).digits, (_sub (_bshl [1], 61), 1),
-                   (randomDigits 100 for i in [0...15])...]
-          F = new Field ms
-          for xs in [[1], (_sub F.M.slice(), 1), (_add F.M.slice(), 1),
-                    (randomDigits 200 for i in [0...995])...]
-            expected = _mod xs, ms
+        for F in testFields()
+          for xs in testResidues F.M
+            expected = _mod xs, F.M
             actual = F._modM xs
             assert _eq expected, actual
+            passed++
+
+        console.log name + ': ' + passed
 
       catch err
-        console.log 'Field modM test failed.'
-        console.log 'ms:', ms
+        console.log name + ' test failed.'
+        console.log 'M:', F? and F.M
         console.log 'xs:', xs
         console.log 'expected:', expected
         console.log 'actual:', actual
         console.log err
         console.log err.message
+
+
+    do () ->
+      name = 'Montgomery lift-reduce consistency'
+      passed = 0
+      try
+        for F in testFields()
+          { _lift, _reduce } = F
+          for xs in testResidues F.M
+            expected = _mod xs, F.M
+            actual = _lift _reduce xs
+            assert _eq expected, actual
+            passed++
+
+        console.log name + ': ' + passed
+
+      catch err
+        console.log name + ' test failed.'
+        console.log 'F.M:', F.M
+        console.log 'xs:', xs
+        console.log 'expected:', expected
+        console.log 'actual:', actual
+        console.log err
+        console.log err.message
+
 
   @diagnose: () ->
     xs = _repr '55e3ae083d0cbdfec136f83823c2d8ad457638380374d291c'

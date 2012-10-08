@@ -61,22 +61,24 @@
   })();
 
   Field = (function() {
-    var _add, _cofactor, _div, _invmod, _lt, _mod, _mul, _shl, _shr, _size, _sub, _zeros;
+    var _add, _cofactor, _div, _lt, _mod, _mul, _shl, _shr, _size, _sub, _zeros;
 
-    _add = Long._add, _div = Long._div, _invmod = Long._invmod, _lt = Long._lt, _mod = Long._mod, _mul = Long._mul, _shl = Long._shl, _shr = Long._shr, _size = Long._size, _sub = Long._sub, _zeros = Long._zeros;
+    _add = Long._add, _div = Long._div, _lt = Long._lt, _mod = Long._mod, _mul = Long._mul, _shl = Long._shl, _shr = Long._shr, _size = Long._size, _sub = Long._sub, _zeros = Long._zeros;
 
     _cofactor = function(ms) {
       var w, ws;
-      w = ((new Long([0, 1])).sub([ms[0]])).invmod([0, 1]);
+      w = (new Long(ms)).negate().invmod([0, 1]);
       ws = w != null ? w.digits : [0];
       return ws;
     };
+
+    Field._cofactor = _cofactor;
 
     function Field(M) {
       var FieldResidue;
       M = (M instanceof Long ? M : new Long(M)).digits;
       return FieldResidue = (function(_super) {
-        var B, K, R, R2, R2_M, R_M, Rb, W, _modM, _mont, _negate, _pow, _reduce, _toField, _toLong;
+        var B, K, R, R2, R2_M, R_M, Rb, W, _lift, _modM, _mont, _negate, _pow, _reduce, _toField, _toLong;
 
         __extends(FieldResidue, _super);
 
@@ -126,11 +128,15 @@
           }
         })();
 
+        _lift = function(xs) {
+          return _modM(_shl(xs.slice(), K));
+        };
+
         _reduce = function(xs) {
           var i, u_i, zs, _i;
           zs = [];
           for (i = _i = 0; 0 <= K ? _i < K : _i > K; i = 0 <= K ? ++_i : --_i) {
-            u_i = (_mul([xs[i]], [W]))[0];
+            u_i = (_mul([xs[i]], W))[0];
             _add(zs, _shl(_mul(M, [u_i]), i));
           }
           _shr(zs, K);
@@ -141,11 +147,11 @@
         };
 
         _toField = function(xs) {
-          return _modM(_shl(xs.slice(), K));
+          return _reduce(xs);
         };
 
         _toLong = function(xs) {
-          return _reduce(xs);
+          return _lift(xs);
         };
 
         _negate = function(xs) {
@@ -162,7 +168,7 @@
           y_0 = ys[0];
           for (i = _i = 0; 0 <= K ? _i < K : _i > K; i = 0 <= K ? ++_i : --_i) {
             x_i = xs[i];
-            u_i = (_add([xs[0]], _mul(_mul([x_i], [y_0]), [W])))[0];
+            u_i = (_add([xs[0]], _mul(_mul([x_i], [y_0]), W)))[0];
             _add(zs, _add(_mul(ys, [x_i]), _mul(M, [u_i])));
             _shr(zs, 1);
           }
@@ -186,6 +192,8 @@
         };
 
         FieldResidue._modM = _modM;
+
+        FieldResidue._lift = _lift;
 
         FieldResidue._reduce = _reduce;
 
@@ -277,7 +285,7 @@
     }
 
     Field.test = function() {
-      var floor, random, randomDigits, randomHex, randomLong, _bshl, _eq, _repr;
+      var floor, random, randomDigits, randomHex, randomLong, testFields, testModuli, testResidues, _bshl, _eq, _repr;
       floor = Math.floor, random = Math.random;
       _bshl = Long._bshl, _eq = Long._eq, _repr = Long._repr;
       randomHex = (function() {
@@ -308,54 +316,106 @@
       randomLong = function(bits) {
         return new Long(randomDigits(bits));
       };
-      return (function() {
-        var F, Ms, actual, expected, i, ms, xs;
-        return Ms = (function() {
-          var _i, _len, _ref, _results;
-          try {
-            _ref = [[7], [65535], (new Long(2147483647)).digits, (new Long(200560490131)).digits, _sub(_bshl([1], 61), 1)].concat(__slice.call((function() {
-                var _j, _results1;
-                _results1 = [];
-                for (i = _j = 0; _j < 15; i = ++_j) {
-                  _results1.push(randomDigits(100));
-                }
-                return _results1;
-              })()));
+      testModuli = function(N) {
+        var i;
+        N || (N = 15);
+        return [[7], [65535], (new Long(2147483647)).digits, (new Long(200560490131)).digits, _sub(_bshl([1], 61), 1)].concat(__slice.call((function() {
+            var _i, _ref, _results;
             _results = [];
-            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-              ms = _ref[_i];
-              F = new Field(ms);
-              _results.push((function() {
-                var _j, _len1, _ref1, _results1;
-                _ref1 = [[1], _sub(F.M.slice(), 1), _add(F.M.slice(), 1)].concat(__slice.call((function() {
-                    var _k, _results2;
-                    _results2 = [];
-                    for (i = _k = 0; _k < 995; i = ++_k) {
-                      _results2.push(randomDigits(200));
-                    }
-                    return _results2;
-                  })()));
-                _results1 = [];
-                for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
-                  xs = _ref1[_j];
-                  expected = _mod(xs, ms);
-                  actual = F._modM(xs);
-                  _results1.push(assert(_eq(expected, actual)));
-                }
-                return _results1;
-              })());
+            for (i = _i = 0, _ref = N - 5; 0 <= _ref ? _i < _ref : _i > _ref; i = 0 <= _ref ? ++_i : --_i) {
+              _results.push(randomDigits(100));
             }
             return _results;
-          } catch (err) {
-            console.log('Field modM test failed.');
-            console.log('ms:', ms);
-            console.log('xs:', xs);
-            console.log('expected:', expected);
-            console.log('actual:', actual);
-            console.log(err);
-            return console.log(err.message);
+          })()));
+      };
+      testResidues = function(M) {
+        var i;
+        return [[1], _sub(M.slice(), 1), _add(M.slice(), 1)].concat(__slice.call((function() {
+            var _i, _results;
+            _results = [];
+            for (i = _i = 0; _i < 995; i = ++_i) {
+              _results.push(randomDigits(200));
+            }
+            return _results;
+          })()));
+      };
+      testFields = function(N) {
+        var F, ms, _i, _len, _ref, _results;
+        _ref = (function() {
+          var _j, _len, _ref, _results1;
+          _ref = testModuli(N);
+          _results1 = [];
+          for (_j = 0, _len = _ref.length; _j < _len; _j++) {
+            ms = _ref[_j];
+            _results1.push(new Field(ms));
           }
+          return _results1;
         })();
+        _results = [];
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          F = _ref[_i];
+          if (!_eq(F.W, [0])) {
+            _results.push(F);
+          }
+        }
+        return _results;
+      };
+      (function() {
+        var F, actual, expected, name, passed, xs, _i, _j, _len, _len1, _ref, _ref1;
+        name = 'Barret reduction';
+        passed = 0;
+        try {
+          _ref = testFields();
+          for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+            F = _ref[_i];
+            _ref1 = testResidues(F.M);
+            for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
+              xs = _ref1[_j];
+              expected = _mod(xs, F.M);
+              actual = F._modM(xs);
+              assert(_eq(expected, actual));
+              passed++;
+            }
+          }
+          return console.log(name + ': ' + passed);
+        } catch (err) {
+          console.log(name + ' test failed.');
+          console.log('M:', (F != null) && F.M);
+          console.log('xs:', xs);
+          console.log('expected:', expected);
+          console.log('actual:', actual);
+          console.log(err);
+          return console.log(err.message);
+        }
+      })();
+      return (function() {
+        var F, actual, expected, name, passed, xs, _i, _j, _len, _len1, _lift, _reduce, _ref, _ref1;
+        name = 'Montgomery lift-reduce consistency';
+        passed = 0;
+        try {
+          _ref = testFields();
+          for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+            F = _ref[_i];
+            _lift = F._lift, _reduce = F._reduce;
+            _ref1 = testResidues(F.M);
+            for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
+              xs = _ref1[_j];
+              expected = _mod(xs, F.M);
+              actual = _lift(_reduce(xs));
+              assert(_eq(expected, actual));
+              passed++;
+            }
+          }
+          return console.log(name + ': ' + passed);
+        } catch (err) {
+          console.log(name + ' test failed.');
+          console.log('F.M:', F.M);
+          console.log('xs:', xs);
+          console.log('expected:', expected);
+          console.log('actual:', actual);
+          console.log(err);
+          return console.log(err.message);
+        }
       })();
     };
 
