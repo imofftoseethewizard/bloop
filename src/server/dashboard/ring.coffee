@@ -16,7 +16,7 @@ assert = do () ->
 
 class Residue
 
-class Field
+class Ring
 
   { _add, _div, _lt, _mod, _mul, _shl, _shr, _size, _sub, _zeros } = Long
 
@@ -31,7 +31,7 @@ class Field
   constructor: (M) ->
     M = (if M instanceof Long then M else new Long M).digits
 
-    return class FieldResidue extends Residue
+    return class RingResidue extends Residue
 
                                     # HAC equivalent
       @M  = M                       # m
@@ -82,7 +82,7 @@ class Field
         _sub xs, M if not _lt xs, M           # 14.32.4    if xs > ms then xs = ms - xs
         xs
 
-      _toField = (xs) -> _reduce xs
+      _toRing = (xs) -> _reduce xs
 
       _toLong = (xs) -> _lift xs
 
@@ -116,21 +116,21 @@ class Field
       @_lift:      _lift
       @_reduce:    _reduce
       @_toLong:    _toLong
-      @_toField:   _toField
+      @_toRing:    _toRing
       @_negate:    _negate
       @_mont:      _mont
       @_pow:       _pow
 
 
       constructor: (x) ->
-        if x instanceof FieldResidue
+        if x instanceof RingResidue
           @digits = x.digits.slice()
 
         else
           x = x.toLong() if x instanceof Residue
           x = new Long x if not (x instanceof Long)
 
-          xs = _toField x.digits.slice()
+          xs = _toRing x.digits.slice()
           xs = _negate xs if x.sign < 0
           @digits = xs
 
@@ -141,29 +141,29 @@ class Field
       toLong: () -> new Long _toLong @digits.slice()
 
       negate: () ->
-        z = new FieldResidue
+        z = new RingResidue
         z.digits = _negate xs.slice()
         z
 
       add: (y) ->
-        y = new FieldResidue y if not (y instanceof FieldResidue)
-        z = new FieldResidue
+        y = new RingResidue y if not (y instanceof RingResidue)
+        z = new RingResidue
 
         z.digits = _add @digits.slice(), y.digits
         z
 
-      sub: (y) -> @add (new FieldResidue y).negate()
+      sub: (y) -> @add (new RingResidue y).negate()
 
       mul: (y) ->
-        y = new FieldResidue y if not (y instanceof FieldResidue)
-        z = new FieldResidue
+        y = new RingResidue y if not (y instanceof RingResidue)
+        z = new RingResidue
 
         z.digits = _mont @digits, y.digits
         z
 
       pow: (y) ->
-        y = new FieldResidue y if not (y instanceof FieldResidue)
-        z = new FieldResidue
+        y = new RingResidue y if not (y instanceof RingResidue)
+        z = new RingResidue
 
         z.digits = _pow @digits, y.digits
         z
@@ -190,8 +190,8 @@ class Field
     testResidues = (M) ->
       [[1], (_sub M.slice(), 1), (_add M.slice(), 1), (randomDigits 200 for i in [0...995])...]
 
-    testFields = (N) ->
-      F for F in (new Field ms for ms in testModuli N) when not _eq F.W, [0]
+    testRings = (N) ->
+      F for F in (new Ring ms for ms in testModuli N) when not _eq F.W, [0]
 
 
     # do () ->
@@ -222,7 +222,7 @@ class Field
       name = 'Barret reduction'
       passed = 0
       try
-        for F in testFields()
+        for F in testRings()
           for xs in testResidues F.M
             expected = _mod xs, F.M
             actual = F._modM xs
@@ -245,7 +245,7 @@ class Field
       name = 'Montgomery lift-reduce consistency'
       passed = 0
       try
-        for F in testFields()
+        for F in testRings()
           { _lift, _reduce } = F
           for xs in testResidues F.M
             expected = _mod xs, F.M
@@ -270,4 +270,4 @@ class Field
     m = Long 2147483647
 
 window.Residue = Residue
-window.Field = Field
+window.Ring = Ring
