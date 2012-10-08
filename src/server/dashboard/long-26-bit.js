@@ -538,10 +538,9 @@
 
     Long._bshr = _bshr;
 
+    Long.prototype.Long = Long;
+
     function Long(x) {
-      if ((typeof Residue !== "undefined" && Residue !== null) && x instanceof Residue) {
-        x = x.toLong();
-      }
       if (x instanceof Long) {
         this.digits = x.digits.slice();
         this.sign = x.sign;
@@ -572,14 +571,14 @@
 
     Long.prototype.negate = function() {
       var z;
-      z = new Long(this);
+      z = new this.Long(this);
       z.sign = (_size(z.digits)) > 0 ? -1 * z.sign : 1;
       return z;
     };
 
     Long.prototype.abs = function() {
       var z;
-      z = new Long(this);
+      z = new this.Long(this);
       z.sign = 1;
       return z;
     };
@@ -588,9 +587,9 @@
       var x, z, _ref;
       x = this;
       if (!(y instanceof Long)) {
-        y = new Long(y);
+        y = new this.Long(y);
       }
-      z = new Long;
+      z = new this.Long;
       if (x.sign < y.sign) {
         _ref = [y, x], x = _ref[0], y = _ref[1];
       }
@@ -610,16 +609,16 @@
     };
 
     Long.prototype.sub = function(y) {
-      return this.add((new Long(y)).negate());
+      return this.add((new this.Long(y)).negate());
     };
 
     Long.prototype.mul = function(y) {
       var x, z;
       x = this;
       if (!(y instanceof Long)) {
-        y = new Long(y);
+        y = new this.Long(y);
       }
-      z = new Long;
+      z = new this.Long;
       z.digits = _mul(x.digits, y.digits);
       z.sign = (_size(z.digits)) === 0 ? 1 : x.sign * y.sign;
       return z;
@@ -629,9 +628,9 @@
       var x, z;
       x = this;
       if (!(y instanceof Long)) {
-        y = new Long(y);
+        y = new this.Long(y);
       }
-      z = new Long;
+      z = new this.Long;
       z.digits = _kmul(x.digits, y.digits);
       z.sign = x.sign * y.sign;
       return z;
@@ -641,16 +640,16 @@
       var q, qs, r, rs, x, xs, ys, _ref;
       x = this;
       if (!(y instanceof Long)) {
-        y = new Long(y);
+        y = new this.Long(y);
       }
       xs = x.digits;
       ys = y.digits;
       if ((_size(ys)) === 0) {
-        return [Infinity, new Long];
+        return [Infinity, new this.Long];
       } else {
         _ref = _divmod(xs, ys), qs = _ref[0], rs = _ref[1];
-        q = new Long(qs);
-        r = new Long(rs);
+        q = new this.Long(qs);
+        r = new this.Long(rs);
         q.sign = x.sign * y.sign;
         if (x.sign < 0 && (_size(rs)) > 0) {
           r.digits = _sub(ys.slice(), rs);
@@ -682,7 +681,7 @@
         sign_y = 1;
       } else {
         if (!(y instanceof Long)) {
-          y = new Long(y);
+          y = new this.Long(y);
         }
         ys = y.digits;
         sign_y = y.sign;
@@ -697,7 +696,7 @@
         sign_y = 1;
       } else {
         if (!(y instanceof Long)) {
-          y = new Long(y);
+          y = new this.Long(y);
         }
         ys = y.digits;
         sign_y = y.sign;
@@ -714,7 +713,7 @@
     };
 
     Long.prototype.gt = function(y) {
-      return (!(y instanceof Long) ? new Long(y) : void 0).lt(this);
+      return (!(y instanceof Long) ? new this.Long(y) : void 0).lt(this);
     };
 
     Long.prototype.gte = function(y) {
@@ -727,16 +726,16 @@
 
     Long.prototype.extendedGcd = function(y) {
       var a, b, c, d, g, u, v, x;
-      a = new Long(1);
-      b = new Long(0);
-      c = new Long(0);
-      d = new Long(1);
-      g = new Long(1);
-      u = new Long(0);
-      v = new Long(0);
+      a = new this.Long(1);
+      b = new this.Long(0);
+      c = new this.Long(0);
+      d = new this.Long(1);
+      g = new this.Long(1);
+      u = new this.Long(0);
+      v = new this.Long(0);
       x = this;
       if (!(y instanceof Long)) {
-        y = new Long(y);
+        y = new this.Long(y);
       }
       if ((x.eq([0])) || (y.eq([0]))) {
         return [a, b, c, d, Infinity, u, v];
@@ -787,7 +786,7 @@
     Long.prototype.invmod = function(m) {
       var a, b, c, d, g, u, v, _ref;
       if (!(m instanceof Long)) {
-        m = new Long(m);
+        m = new this.Long(m);
       }
       if ((m = m.abs()).lte([1])) {
         return null;
@@ -810,10 +809,10 @@
     Long.prototype.gcd = function(y) {
       var a, b, c, d, g, h, u, v, _ref;
       if (!(y instanceof Long)) {
-        y = new Long(y);
+        y = new this.Long(y);
       }
       _ref = this.abs().extendedGcd(y.abs()), a = _ref[0], b = _ref[1], c = _ref[2], d = _ref[3], g = _ref[4], u = _ref[5], v = _ref[6];
-      h = g === Infinity ? new Long : g.mul(v);
+      h = g === Infinity ? new this.Long : g.mul(v);
       return h;
     };
 
@@ -823,7 +822,7 @@
       if (y < 0) {
         y = 0;
       }
-      z = new Long(_pow(this.digits, y));
+      z = new this.Long(_pow(this.digits, y));
       z.sign = y & 1 ? this.sign : 1;
       return z;
     };
@@ -831,36 +830,36 @@
     Long.prototype.mulmod = function(y, m) {
       var zs;
       if (!(y instanceof Long)) {
-        y = new Long(y);
+        y = new this.Long(y);
       }
       if (!(m instanceof Long)) {
-        m = new Long(m);
+        m = new this.Long(m);
       }
       zs = _mulmod(this.digits, y.digits, m.digits);
       if (this.sign * y.sign < 0 && _size(zs > 0)) {
         zs = _sub(m.digits.slice(), zs);
       }
-      return new Long(zs);
+      return new this.Long(zs);
     };
 
     Long.prototype.powmod = function(y, m) {
       var zs;
       if (!(y instanceof Long)) {
-        y = new Long(y);
+        y = new this.Long(y);
       }
       if (!(m instanceof Long)) {
-        m = new Long(m);
+        m = new this.Long(m);
       }
       zs = _powmod(this.digits, y.digits, m.digits);
       if (this.sign < 0 && y.digits[0] & 1 && _size(zs > 0)) {
         zs = _sub(m.digits.slice(), zs);
       }
-      return new Long(zs);
+      return new this.Long(zs);
     };
 
     Long.prototype.shl = function(k) {
       var z;
-      z = new Long;
+      z = new this.Long;
       z.digits = _shl(this.digits.slice(), k);
       z.sign = this.sign;
       return z;
@@ -868,7 +867,7 @@
 
     Long.prototype.shr = function(k) {
       var z;
-      z = new Long;
+      z = new this.Long;
       z.digits = _shr(this.digits.slice(), k);
       z.sign = this.sign;
       return z;
@@ -876,7 +875,7 @@
 
     Long.prototype.bshl = function(k) {
       var z;
-      z = new Long;
+      z = new this.Long;
       z.digits = _bshl(this.digits.slice(), k);
       z.sign = this.sign;
       return z;
@@ -884,7 +883,7 @@
 
     Long.prototype.bshr = function(k) {
       var z;
-      z = new Long;
+      z = new this.Long;
       z.digits = _bshr(this.digits.slice(), k);
       z.sign = this.sign;
       return z;

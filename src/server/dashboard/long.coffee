@@ -472,10 +472,13 @@ class Long
   @_bshl:      _bshl
   @_bshr:      _bshr
 
-  constructor: (x) ->
-    if Residue? and x instanceof Residue
-      x = x.toLong()
+  # This member is used to provide generic constructors in the functions below, so that the value
+  # type will propagate through a computation.  This supports the use of Long member functions
+  # generically with Residue subclasses.
 
+  Long:       Long
+
+  constructor: (x) ->
     if x instanceof Long
       @digits = x.digits.slice()
       @sign = x.sign
@@ -501,21 +504,21 @@ class Long
       @valueOf().toString radix
 
   negate: () ->
-    z = new Long this
+    z = new @Long this
     z.sign = if (_size z.digits) > 0 then -1 * z.sign else 1
     z
 
 
   abs: () ->
-    z = new Long this
+    z = new @Long this
     z.sign = 1
     z
 
 
   add: (y) ->
     x = this
-    y = new Long y if not (y instanceof Long)
-    z = new Long
+    y = new @Long y if not (y instanceof Long)
+    z = new @Long
 
     if x.sign < y.sign
       [x, y] = [y, x]
@@ -534,12 +537,12 @@ class Long
 
     z
 
-  sub: (y) -> @add (new Long y).negate()
+  sub: (y) -> @add (new @Long y).negate()
 
   mul: (y) ->
     x = this
-    y = new Long y if not (y instanceof Long)
-    z = new Long
+    y = new @Long y if not (y instanceof Long)
+    z = new @Long
 
     z.digits = _mul x.digits, y.digits
     z.sign = if (_size z.digits) is 0 then 1 else x.sign * y.sign
@@ -548,8 +551,8 @@ class Long
 
   kmul: (y) ->
     x = this
-    y = new Long y if not (y instanceof Long)
-    z = new Long
+    y = new @Long y if not (y instanceof Long)
+    z = new @Long
 
     z.digits = _kmul x.digits, y.digits
     z.sign = x.sign * y.sign
@@ -558,20 +561,20 @@ class Long
 
   divmod: (y) ->
     x = this
-    y = new Long y if not (y instanceof Long)
+    y = new @Long y if not (y instanceof Long)
 
     xs = x.digits
     ys = y.digits
 
     if (_size ys) is 0
-      [Infinity, new Long]
+      [Infinity, new @Long]
 
     else
       [qs, rs] = _divmod xs, ys
       # assert _eq xs, _add (_mul qs, ys), rs
 
-      q = new Long qs
-      r = new Long rs
+      q = new @Long qs
+      r = new @Long rs
 
       # Euclidean division convention:
       #   0 <= r < q
@@ -601,7 +604,7 @@ class Long
       ys = y
       sign_y = 1
     else
-      y = new Long y if not (y instanceof Long)
+      y = new @Long y if not (y instanceof Long)
       ys = y.digits
       sign_y = y.sign
 
@@ -613,7 +616,7 @@ class Long
       ys = y
       sign_y = 1
     else
-      y = new Long y if not (y instanceof Long)
+      y = new @Long y if not (y instanceof Long)
       ys = y.digits
       sign_y = y.sign
 
@@ -622,24 +625,24 @@ class Long
     else if @sign is 1 then _lt @digits, ys
     else _lt ys, @digits
 
-  gt: (y) -> (new Long y if not (y instanceof Long)).lt this
+  gt: (y) -> (new @Long y if not (y instanceof Long)).lt this
 
   gte: (y) -> not @lt y
   lte: (y) -> not @gt y
 
   extendedGcd: (y) ->
-    a = new Long 1
-    b = new Long 0
-    c = new Long 0
-    d = new Long 1
+    a = new @Long 1
+    b = new @Long 0
+    c = new @Long 0
+    d = new @Long 1
 
-    g = new Long 1
+    g = new @Long 1
 
-    u = new Long 0
-    v = new Long 0
+    u = new @Long 0
+    v = new @Long 0
 
     x = this
-    y = new Long y if not (y instanceof Long)
+    y = new @Long y if not (y instanceof Long)
 
     if (x.eq [0]) or (y.eq [0]) then return [a, b, c, d, Infinity, u, v]
 
@@ -686,7 +689,7 @@ class Long
 
 
   invmod: (m) ->
-    m = new Long m if not (m instanceof Long)
+    m = new @Long m if not (m instanceof Long)
 
     if (m = m.abs()).lte [1]
       null
@@ -702,9 +705,9 @@ class Long
 
 
   gcd: (y) ->
-    y = new Long y if not (y instanceof Long)
+    y = new @Long y if not (y instanceof Long)
     [a, b, c, d, g, u, v] = @abs().extendedGcd y.abs()
-    h = if g is Infinity then new Long else g.mul v
+    h = if g is Infinity then new @Long else g.mul v
     h
 
 
@@ -712,52 +715,52 @@ class Long
     y = Number y
     y = 0 if y < 0
 
-    z = new Long _pow @digits, y
+    z = new @Long _pow @digits, y
     z.sign = if y & 1 then @sign else 1
 
     z
 
   mulmod: (y, m) ->
-    y = new Long y if not (y instanceof Long)
-    m = new Long m if not (m instanceof Long)
+    y = new @Long y if not (y instanceof Long)
+    m = new @Long m if not (m instanceof Long)
 
     zs = _mulmod @digits, y.digits, m.digits
     if @sign * y.sign < 0 and _size zs > 0
       zs = _sub m.digits.slice(), zs
 
-    new Long zs
+    new @Long zs
 
   powmod: (y, m) ->
-    y = new Long y if not (y instanceof Long)
-    m = new Long m if not (m instanceof Long)
+    y = new @Long y if not (y instanceof Long)
+    m = new @Long m if not (m instanceof Long)
 
     zs = _powmod @digits, y.digits, m.digits
     if @sign < 0 && y.digits[0] & 1 and _size zs > 0
       zs = _sub m.digits.slice(), zs
 
-    new Long zs
+    new @Long zs
 
 
   shl: (k) ->
-    z = new Long
+    z = new @Long
     z.digits = _shl  @digits.slice(), k
     z.sign = @sign
     z
 
   shr: (k) ->
-    z = new Long
+    z = new @Long
     z.digits = _shr  @digits.slice(), k
     z.sign = @sign
     z
 
   bshl: (k) ->
-    z = new Long
+    z = new @Long
     z.digits = _bshl  @digits.slice(), k
     z.sign = @sign
     z
 
   bshr: (k) ->
-    z = new Long
+    z = new @Long
     z.digits = _bshr  @digits.slice(), k
     z.sign = @sign
     z
