@@ -71,18 +71,16 @@ class Field
               while not _lt rs, M then _sub rs, M
               rs
 
-      _lift = (xs) -> _modM _shl xs.slice(), K
+      _lift = (xs) -> _modM _shl xs, K
 
       _reduce = (xs) ->
-        zs = []
-
-        for i in [0...K]                      # 14.32.2
+        for i in [0...K] by 1                 # 14.32.2
           u_i = (_mul [xs[i]], W)[0]          # 14.32.2.1  u_i = (x_i * w) mod b
-          _add zs, _shl (_mul M, [u_i]), i    # 14.32.2.2  zs = zs + (u_i * b^i) * ms
+          _add xs, _shl (_mul M, [u_i]), i    # 14.32.2.2  xs = xs + (u_i * b^i) * ms
 
-        _shr zs, K                            # 14.32.3    zs = zs / b^k
-        _sub zs, M if not _lt zs, M           # 14.32.4    if zs > ms then zs = ms - zs
-        zs
+        _shr xs, K                            # 14.32.3    xs = xs / b^k
+        _sub xs, M if not _lt xs, M           # 14.32.4    if xs > ms then xs = ms - xs
+        xs
 
       _toField = (xs) -> _reduce xs
 
@@ -132,7 +130,7 @@ class Field
           x = x.toLong() if x instanceof Residue
           x = new Long x if not (x instanceof Long)
 
-          xs = _toField x.digits
+          xs = _toField x.digits.slice()
           xs = _negate xs if x.sign < 0
           @digits = xs
 
@@ -140,7 +138,7 @@ class Field
 
       toString: (radix) -> @toLong().toString(radix)
 
-      toLong: () -> new Long _toLong @digits
+      toLong: () -> new Long _toLong @digits.slice()
 
       negate: () ->
         z = new FieldResidue
@@ -251,7 +249,7 @@ class Field
           { _lift, _reduce } = F
           for xs in testResidues F.M
             expected = _mod xs, F.M
-            actual = _lift _reduce xs
+            actual = _lift _reduce xs.slice()
             assert _eq expected, actual
             passed++
 

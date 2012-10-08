@@ -411,7 +411,6 @@
       ws = _bshl(xs.slice(), k);
       zs = _bshl(ys.slice(), k);
       _ref = divmod(ws, zs), qs = _ref[0], rs = _ref[1];
-      assert(_eq(xs, _add(_mul(qs, ys), _bshr(rs.slice(), k))));
       return [qs, _bshr(rs, k)];
     };
 
@@ -676,7 +675,6 @@
         return [Infinity, new Long];
       } else {
         _ref = _divmod(xs, ys), qs = _ref[0], rs = _ref[1];
-        assert(_eq(xs, _add(_mul(qs, ys), rs)));
         q = new Long(qs);
         r = new Long(rs);
         q.sign = x.sign * y.sign;
@@ -687,7 +685,6 @@
         if ((_size(q.digits)) === 0 && q.sign === -1) {
           q.sign = 1;
         }
-        assert(x.eq(r.add(y.mul(q))));
         return [q, r];
       }
     };
@@ -787,7 +784,6 @@
             a = (a.add(y)).bshr(1);
             b = (b.sub(x)).bshr(1);
           }
-          assert(u.eq((a.mul(x)).add(b.mul(y))));
         }
         while ((v.bit(0)) === 0) {
           v = v.bshr(1);
@@ -798,7 +794,6 @@
             c = (c.add(y)).bshr(1);
             d = (d.sub(x)).bshr(1);
           }
-          assert(v.eq((c.mul(x)).add(d.mul(y))));
         }
         if (u.gte(v)) {
           u = u.sub(v);
@@ -1478,7 +1473,7 @@
             m = randomLong(bits);
             C = new Long(_bshl([1], bits));
             for (j = _k = 0; _k < 30; j = ++_k) {
-              x = (randomLong(bits + 1)).add(C);
+              x = (randomLong(bits + 1)).sub(C);
               x_inv = x.invmod(m);
               if (x_inv != null) {
                 xx_inv = x.mul(x_inv);
@@ -1560,40 +1555,6 @@
       endNaive = new Date;
       console.log('Naive', endNaive - startNaive);
       return console.log('Karatsuba', endKaratsuba - startKaratsuba);
-    };
-
-    Long.diagnose = function() {
-      var J, K, i, x, xs, y, ys, _i, _j, _ref, _ref1;
-      x = new Long(70291730349);
-      y = new Long(1353405651);
-      xs = x.digits;
-      ys = y.digits;
-      J = __radix__ * _size(ys);
-      for (i = _i = _ref = J - 1; _i >= 0; i = _i += -1) {
-        if (_bit(ys, i)) {
-          try {
-            _bitset(ys, i, 0);
-            _divmod(xs, ys);
-            _bitset(ys, i, 1);
-          } catch (err) {
-
-          }
-        }
-      }
-      K = __radix__ * _size(ys);
-      for (i = _j = _ref1 = K - 1; _j >= 0; i = _j += -1) {
-        if (_bit(xs, i)) {
-          try {
-            _bitset(xs, i, 0);
-            _divmod(xs, xs);
-            _bitset(xs, i, 1);
-          } catch (err) {
-
-          }
-        }
-      }
-      console.log('xs', _hex(xs));
-      return console.log('ys', _hex(ys));
     };
 
     return Long;

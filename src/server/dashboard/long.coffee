@@ -1235,7 +1235,7 @@ class Long
           m = randomLong bits
           C = new Long _bshl [1], bits
           for j in [0...30]
-            x = (randomLong bits+1).add C
+            x = (randomLong bits+1).sub C
             x_inv = x.invmod m
             if x_inv?
               xx_inv = x.mul x_inv

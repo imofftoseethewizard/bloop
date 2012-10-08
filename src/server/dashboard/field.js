@@ -129,21 +129,20 @@
         })();
 
         _lift = function(xs) {
-          return _modM(_shl(xs.slice(), K));
+          return _modM(_shl(xs, K));
         };
 
         _reduce = function(xs) {
-          var i, u_i, zs, _i;
-          zs = [];
-          for (i = _i = 0; 0 <= K ? _i < K : _i > K; i = 0 <= K ? ++_i : --_i) {
+          var i, u_i, _i;
+          for (i = _i = 0; _i < K; i = _i += 1) {
             u_i = (_mul([xs[i]], W))[0];
-            _add(zs, _shl(_mul(M, [u_i]), i));
+            _add(xs, _shl(_mul(M, [u_i]), i));
           }
-          _shr(zs, K);
-          if (!_lt(zs, M)) {
-            _sub(zs, M);
+          _shr(xs, K);
+          if (!_lt(xs, M)) {
+            _sub(xs, M);
           }
-          return zs;
+          return xs;
         };
 
         _toField = function(xs) {
@@ -218,7 +217,7 @@
             if (!(x instanceof Long)) {
               x = new Long(x);
             }
-            xs = _toField(x.digits);
+            xs = _toField(x.digits.slice());
             if (x.sign < 0) {
               xs = _negate(xs);
             }
@@ -235,7 +234,7 @@
         };
 
         FieldResidue.prototype.toLong = function() {
-          return new Long(_toLong(this.digits));
+          return new Long(_toLong(this.digits.slice()));
         };
 
         FieldResidue.prototype.negate = function() {
@@ -401,7 +400,7 @@
             for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
               xs = _ref1[_j];
               expected = _mod(xs, F.M);
-              actual = _lift(_reduce(xs));
+              actual = _lift(_reduce(xs.slice()));
               assert(_eq(expected, actual));
               passed++;
             }
