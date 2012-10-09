@@ -19,7 +19,7 @@ class Residue extends Long
 
 class RingMod
 
-  { _add, _div, _lt, _mod, _mul, _shl, _shr, _size, _sub, _trim, _zeros } = Long
+  { _add, _bit, _div, _lt, _mod, _msb, _mul, _shl, _shr, _size, _sub, _trim, _zeros } = Long
 
   # (- M)^-1 mod b
   _cofactor = (ms) ->
@@ -106,7 +106,8 @@ class RingMod
         ws = _mont xs, R2_M
         zs = R_M.slice()
 
-        for i in [K..0] by -1
+        t = _msb ys
+        for i in [t..0] by -1
           zs = _mont zs, zs
           zs = _mont zs, ws if _bit ys, i
 
@@ -132,11 +133,11 @@ class RingMod
         @sign = 1
 
 
-
       negate: () ->
         z = new @Long this
         z.digits = _negate z.digits
         z
+
 
       abs: () -> new @Long this
 
@@ -147,6 +148,7 @@ class RingMod
 
         z.digits = _lift _mont @digits, y.digits
         z
+
 
       kmul: (y) -> @mul y
 
@@ -286,6 +288,56 @@ class RingMod
         console.log err.message
 
       console.log name + ': ' + passed
+
+
+    do () ->
+      name = 'M = 7 pow consistency'
+      passed = 0
+      try
+        Rmod7 = new RingMod 7
+        for i in [0..7]
+          x = new Rmod7 i
+          for j in [0..256]
+            y = new Rmod7 j
+            expected = (new Long x).powmod y, 7
+            actual = x.pow y
+            assert expected.eq actual
+            passed++
+
+        console.log name + ': ' + passed
+
+      catch err
+        console.log name + ' test failed on pass ' + (passed+1) + '.'
+        console.log 'x:', x.valueOf() if x?
+        console.log 'y:', y.valueOf() if y?
+        console.log 'expected:', expected.valueOf() if expected?
+        console.log 'actual:', actual.valueOf() if actual?
+        console.log err
+        console.log err.message
+
+    do () ->
+      name = 'pow consistency'
+      passed = 0
+      try
+        for R in testRings()
+          for x in testResidues R
+            y = new R floor 256*random()
+            expected = (new Long x).powmod y, R.M
+            actual = x.pow y
+            assert expected.eq actual
+            passed++
+
+        console.log name + ': ' + passed
+
+      catch err
+        console.log name + ' test failed on pass ' + (passed+1) + '.'
+        console.log 'x:', x.valueOf() if x?
+        console.log 'y:', y.valueOf() if y?
+        console.log 'expected:', expected.valueOf() if expected?
+        console.log 'actual:', actual.valueOf() if actual?
+        console.log err
+        console.log err.message
+
 
 window.Residue = Residue
 window.RingMod = RingMod

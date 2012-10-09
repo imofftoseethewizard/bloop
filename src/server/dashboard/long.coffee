@@ -113,6 +113,16 @@ class Long
     c++ for i in [0...xs.length] if _bit xs, i
     c
 
+  _msb = (xs) ->
+    k = _size xs
+    j = __radix__ * k
+    x_k = xs[k-1]
+
+    while --j >= 0 and not (x_k & (1 << (__radix__ - 1)))
+      x_k <<= 1
+
+    j
+
   _size = (xs) ->
     i = xs.length-1
     while (xs[i] or 0) is 0 and i >= 0 then i--
@@ -458,6 +468,10 @@ class Long
   @_repr:      _repr
   @_hex:       _hex
   @_size:      _size
+  @_bit:       _bit
+  @_bitset:    _bitset
+  @_bitcount:  _bitcount
+  @_msb:       _msb
   @_trim:      _trim
   @_value:     _value
   @_lt:        _lt

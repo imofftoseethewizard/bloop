@@ -53,7 +53,7 @@
   };
 
   Long = (function() {
-    var __base2__, __base__, __demibase__, __demimask__, __demiradix__, __mask__, __mul, __radix__, _add, _bit, _bitcount, _bitset, _bshl, _bshr, _div, _divmod, _eq, _hex, _kmul, _lt, _mantissa, _mod, _mul, _mulmod, _pow, _powmod, _repr, _setRadix, _shl, _shr, _size, _sub, _trim, _value, _width, _zeros;
+    var __base2__, __base__, __demibase__, __demimask__, __demiradix__, __mask__, __mul, __radix__, _add, _bit, _bitcount, _bitset, _bshl, _bshr, _div, _divmod, _eq, _hex, _kmul, _lt, _mantissa, _mod, _msb, _mul, _mulmod, _pow, _powmod, _repr, _setRadix, _shl, _shr, _size, _sub, _trim, _value, _width, _zeros;
 
     Long.KaratsubaLimit = 64;
 
@@ -194,6 +194,17 @@
         }
       }
       return c;
+    };
+
+    _msb = function(xs) {
+      var j, k, x_k;
+      k = _size(xs);
+      j = __radix__ * k;
+      x_k = xs[k - 1];
+      while (--j >= 0 && !(x_k & (1 << (__radix__ - 1)))) {
+        x_k <<= 1;
+      }
+      return j;
     };
 
     _size = function(xs) {
@@ -538,6 +549,14 @@
     Long._hex = _hex;
 
     Long._size = _size;
+
+    Long._bit = _bit;
+
+    Long._bitset = _bitset;
+
+    Long._bitcount = _bitcount;
+
+    Long._msb = _msb;
 
     Long._trim = _trim;
 

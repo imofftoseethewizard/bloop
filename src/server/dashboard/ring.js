@@ -65,9 +65,9 @@
   })(Long);
 
   RingMod = (function() {
-    var _add, _cofactor, _div, _lt, _mod, _mul, _shl, _shr, _size, _sub, _trim, _zeros;
+    var _add, _bit, _cofactor, _div, _lt, _mod, _msb, _mul, _shl, _shr, _size, _sub, _trim, _zeros;
 
-    _add = Long._add, _div = Long._div, _lt = Long._lt, _mod = Long._mod, _mul = Long._mul, _shl = Long._shl, _shr = Long._shr, _size = Long._size, _sub = Long._sub, _trim = Long._trim, _zeros = Long._zeros;
+    _add = Long._add, _bit = Long._bit, _div = Long._div, _lt = Long._lt, _mod = Long._mod, _msb = Long._msb, _mul = Long._mul, _shl = Long._shl, _shr = Long._shr, _size = Long._size, _sub = Long._sub, _trim = Long._trim, _zeros = Long._zeros;
 
     _cofactor = function(ms) {
       var w, ws;
@@ -182,10 +182,11 @@
         };
 
         _pow = function(xs, ys) {
-          var i, ws, zs, _i;
+          var i, t, ws, zs, _i;
           ws = _mont(xs, R2_M);
           zs = R_M.slice();
-          for (i = _i = K; _i >= 0; i = _i += -1) {
+          t = _msb(ys);
+          for (i = _i = t; _i >= 0; i = _i += -1) {
             zs = _mont(zs, zs);
             if (_bit(ys, i)) {
               zs = _mont(zs, ws);
@@ -441,7 +442,7 @@
           return console.log(err.message);
         }
       })();
-      return (function() {
+      (function() {
         var L, R, actual, expected, i, name, passed, residues, x, y, _i, _j, _len, _ref;
         name = 'multiplication consistency';
         passed = 0;
@@ -482,78 +483,78 @@
         }
         return console.log(name + ': ' + passed);
       })();
-    };
-
-    RingMod.candidates = [];
-
-    RingMod.diagnose = (function() {
-      return function(x, y) {
-        var actual, bits, expected, i, _i, _j, _ref, _ref1;
-        bits = Long._getRadix() * _size(x.digits);
-        for (i = _i = _ref = bits - 1; _i >= 0; i = _i += -1) {
-          try {
-            if (x.bit(i)) {
-              x.bitset(i, 0);
-              expected = ((new Long(x)).mul(y)).mod(x.constructor.M);
-              actual = x.mul(y);
+      (function() {
+        var Rmod7, actual, expected, i, j, name, passed, x, y, _i, _j;
+        name = 'M = 7 pow consistency';
+        passed = 0;
+        try {
+          Rmod7 = new RingMod(7);
+          for (i = _i = 0; _i <= 7; i = ++_i) {
+            x = new Rmod7(i);
+            for (j = _j = 0; _j <= 256; j = ++_j) {
+              y = new Rmod7(j);
+              expected = (new Long(x)).powmod(y, 7);
+              actual = x.pow(y);
               assert(expected.eq(actual));
-              x.bitset(i, 1);
+              passed++;
             }
-          } catch (err) {
-
           }
+          return console.log(name + ': ' + passed);
+        } catch (err) {
+          console.log(name + ' test failed on pass ' + (passed + 1) + '.');
+          if (x != null) {
+            console.log('x:', x.valueOf());
+          }
+          if (y != null) {
+            console.log('y:', y.valueOf());
+          }
+          if (expected != null) {
+            console.log('expected:', expected.valueOf());
+          }
+          if (actual != null) {
+            console.log('actual:', actual.valueOf());
+          }
+          console.log(err);
+          return console.log(err.message);
         }
-        bits = Long._getRadix() * _size(y.digits);
-        for (i = _j = _ref1 = bits - 1; _j >= 0; i = _j += -1) {
-          try {
-            if (y.bit(i)) {
-              y.bitset(i, 0);
-              expected = ((new Long(x)).mul(y)).mod(x.constructor.M);
-              actual = x.mul(y);
+      })();
+      return (function() {
+        var R, actual, expected, name, passed, x, y, _i, _j, _len, _len1, _ref, _ref1;
+        name = 'pow consistency';
+        passed = 0;
+        try {
+          _ref = testRings();
+          for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+            R = _ref[_i];
+            _ref1 = testResidues(R);
+            for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
+              x = _ref1[_j];
+              y = new R(floor(256 * random()));
+              expected = (new Long(x)).powmod(y, R.M);
+              actual = x.pow(y);
               assert(expected.eq(actual));
-              y.bitset(i, 1);
+              passed++;
             }
-          } catch (err) {
-
           }
+          return console.log(name + ': ' + passed);
+        } catch (err) {
+          console.log(name + ' test failed on pass ' + (passed + 1) + '.');
+          if (x != null) {
+            console.log('x:', x.valueOf());
+          }
+          if (y != null) {
+            console.log('y:', y.valueOf());
+          }
+          if (expected != null) {
+            console.log('expected:', expected.valueOf());
+          }
+          if (actual != null) {
+            console.log('actual:', actual.valueOf());
+          }
+          console.log(err);
+          return console.log(err.message);
         }
-        RingMod.candidates.push([x, y]);
-        if (RingMod.candidates.length >= 100) {
-          throw 'lotsa candidates';
-        }
-      };
-    })();
-
-    RingMod.shortest = function() {
-      var minPair, minSize, x, xySize, y, _i, _len, _ref, _ref1;
-      minSize = Infinity;
-      minPair = null;
-      _ref = RingMod.candidates;
-      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        _ref1 = _ref[_i], x = _ref1[0], y = _ref1[1];
-        xySize = (_size(x.digits)) + (_size(y.digits));
-        if (xySize < minSize) {
-          minSize = xySize;
-          minPair = [x, y];
-        }
-      }
-      return minPair;
-    };
-
-    RingMod.fewest = function() {
-      var minBits, minPair, x, xyBits, y, _i, _len, _ref, _ref1;
-      minBits = Infinity;
-      minPair = null;
-      _ref = RingMod.candidates;
-      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        _ref1 = _ref[_i], x = _ref1[0], y = _ref1[1];
-        xyBits = x.bitcount() + y.bitcount();
-        if (xyBits < minBits) {
-          minBits = xyBits;
-          minPair = [x, y];
-        }
-      }
-      return minPair;
+      })();
     };
 
     return RingMod;
