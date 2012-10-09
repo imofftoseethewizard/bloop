@@ -95,6 +95,17 @@ class Long
 
       chs.reverse().join ''
 
+  _random = (bits) ->
+    xs = []
+    while bits > __radix__
+      xs.push floor __base__ * random()
+      bits -= __radix__
+
+    if bits > 0
+      xs.push floor (1 << bits) * random()
+
+    xs
+
   _bitset = (xs, k, v) ->
     j = k % __radix__
     i = (k - j)/__radix__
@@ -497,6 +508,8 @@ class Long
 
   Long:       Long
 
+  @random: (bits) -> new Long _random bits
+
   constructor: (x) ->
     if x instanceof Long
       @digits = x.digits.slice()
@@ -619,6 +632,8 @@ class Long
   bit: (k) -> _bit @digits, k
   bitset: (k, v) -> _bitset @digits, k, v
   bitcount: () -> _bitcount @digits
+
+  msb: () -> _msb @digits
 
   eq: (y) ->
     if y instanceof Array

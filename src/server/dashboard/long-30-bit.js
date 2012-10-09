@@ -53,7 +53,7 @@
   };
 
   Long = (function() {
-    var __mul, _add, _bit, _bitcount, _bitset, _bshl, _bshr, _div, _divmod, _eq, _hex, _kmul, _lt, _mantissa, _mod, _msb, _mul, _mulmod, _pow, _powmod, _repr, _shl, _shr, _size, _sub, _trim, _value, _width, _zeros;
+    var __mul, _add, _bit, _bitcount, _bitset, _bshl, _bshr, _div, _divmod, _eq, _hex, _kmul, _lt, _mantissa, _mod, _msb, _mul, _mulmod, _pow, _powmod, _random, _repr, _shl, _shr, _size, _sub, _trim, _value, _width, _zeros;
 
     Long.KaratsubaLimit = 64;
 
@@ -142,6 +142,19 @@
         return chs.reverse().join('');
       };
     })();
+
+    _random = function(bits) {
+      var xs;
+      xs = [];
+      while (bits > 30) {
+        xs.push(floor(0x40000000 * random()));
+        bits -= 30;
+      }
+      if (bits > 0) {
+        xs.push(floor((1 << bits) * random()));
+      }
+      return xs;
+    };
 
     _bitset = function(xs, k, v) {
       var i, j;
@@ -570,6 +583,10 @@
 
     Long.prototype.Long = Long;
 
+    Long.random = function(bits) {
+      return new Long(_random(bits));
+    };
+
     function Long(x) {
       if (x instanceof Long) {
         this.digits = x.digits.slice();
@@ -710,6 +727,10 @@
 
     Long.prototype.bitcount = function() {
       return _bitcount(this.digits);
+    };
+
+    Long.prototype.msb = function() {
+      return _msb(this.digits);
     };
 
     Long.prototype.eq = function(y) {
