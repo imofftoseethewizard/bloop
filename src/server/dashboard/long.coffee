@@ -108,6 +108,11 @@ class Long
     i = (k - j)/__radix__
     (xs[i] or 0) >>> j & 1
 
+  _bitcount = (xs) ->
+    c = 0
+    c++ for i in [0...xs.length] if _bit xs, i
+    c
+
   _size = (xs) ->
     i = xs.length-1
     while (xs[i] or 0) is 0 and i >= 0 then i--
@@ -598,13 +603,15 @@ class Long
   mod: (y) -> (@divmod y)[1]
 
   bit: (k) -> _bit @digits, k
+  bitset: (k, v) -> _bitset @digits, k, v
+  bitcount: () -> _bitcount @digits
 
   eq: (y) ->
     if y instanceof Array
       ys = y
       sign_y = 1
     else
-      y = new @Long y if not (y instanceof Long)
+      y = new @Long y if not (y instanceof @Long)
       ys = y.digits
       sign_y = y.sign
 
@@ -616,7 +623,7 @@ class Long
       ys = y
       sign_y = 1
     else
-      y = new @Long y if not (y instanceof Long)
+      y = new @Long y if not (y instanceof @Long)
       ys = y.digits
       sign_y = y.sign
 
@@ -625,7 +632,7 @@ class Long
     else if @sign is 1 then _lt @digits, ys
     else _lt ys, @digits
 
-  gt: (y) -> (new @Long y if not (y instanceof Long)).lt this
+  gt: (y) -> (new @Long y if not (y instanceof @Long)).lt this
 
   gte: (y) -> not @lt y
   lte: (y) -> not @gt y
@@ -642,7 +649,7 @@ class Long
     v = new @Long 0
 
     x = this
-    y = new @Long y if not (y instanceof Long)
+    y = new @Long y if not (y instanceof @Long)
 
     if (x.eq [0]) or (y.eq [0]) then return [a, b, c, d, Infinity, u, v]
 
@@ -689,7 +696,7 @@ class Long
 
 
   invmod: (m) ->
-    m = new @Long m if not (m instanceof Long)
+    m = new @Long m if not (m instanceof @Long)
 
     if (m = m.abs()).lte [1]
       null
@@ -743,25 +750,25 @@ class Long
 
   shl: (k) ->
     z = new @Long
-    z.digits = _shl  @digits.slice(), k
+    z.digits = _shl @digits.slice(), k
     z.sign = @sign
     z
 
   shr: (k) ->
     z = new @Long
-    z.digits = _shr  @digits.slice(), k
+    z.digits = _shr @digits.slice(), k
     z.sign = @sign
     z
 
   bshl: (k) ->
     z = new @Long
-    z.digits = _bshl  @digits.slice(), k
+    z.digits = _bshl @digits.slice(), k
     z.sign = @sign
     z
 
   bshr: (k) ->
     z = new @Long
-    z.digits = _bshr  @digits.slice(), k
+    z.digits = _bshr @digits.slice(), k
     z.sign = @sign
     z
 

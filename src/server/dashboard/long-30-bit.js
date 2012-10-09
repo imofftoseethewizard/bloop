@@ -53,7 +53,7 @@
   };
 
   Long = (function() {
-    var __mul, _add, _bit, _bitset, _bshl, _bshr, _div, _divmod, _eq, _hex, _kmul, _lt, _mantissa, _mod, _mul, _mulmod, _pow, _powmod, _repr, _shl, _shr, _size, _sub, _trim, _value, _width, _zeros;
+    var __mul, _add, _bit, _bitcount, _bitset, _bshl, _bshr, _div, _divmod, _eq, _hex, _kmul, _lt, _mantissa, _mod, _mul, _mulmod, _pow, _powmod, _repr, _shl, _shr, _size, _sub, _trim, _value, _width, _zeros;
 
     Long.KaratsubaLimit = 64;
 
@@ -159,6 +159,17 @@
       j = k % 30;
       i = (k - j) / 30;
       return (xs[i] || 0) >>> j & 1;
+    };
+
+    _bitcount = function(xs) {
+      var c, i, _i, _ref;
+      c = 0;
+      if (_bit(xs, i)) {
+        for (i = _i = 0, _ref = xs.length; 0 <= _ref ? _i < _ref : _i > _ref; i = 0 <= _ref ? ++_i : --_i) {
+          c++;
+        }
+      }
+      return c;
     };
 
     _size = function(xs) {
@@ -674,13 +685,21 @@
       return _bit(this.digits, k);
     };
 
+    Long.prototype.bitset = function(k, v) {
+      return _bitset(this.digits, k, v);
+    };
+
+    Long.prototype.bitcount = function() {
+      return _bitcount(this.digits);
+    };
+
     Long.prototype.eq = function(y) {
       var sign_y, ys;
       if (y instanceof Array) {
         ys = y;
         sign_y = 1;
       } else {
-        if (!(y instanceof Long)) {
+        if (!(y instanceof this.Long)) {
           y = new this.Long(y);
         }
         ys = y.digits;
@@ -695,7 +714,7 @@
         ys = y;
         sign_y = 1;
       } else {
-        if (!(y instanceof Long)) {
+        if (!(y instanceof this.Long)) {
           y = new this.Long(y);
         }
         ys = y.digits;
@@ -713,7 +732,7 @@
     };
 
     Long.prototype.gt = function(y) {
-      return (!(y instanceof Long) ? new this.Long(y) : void 0).lt(this);
+      return (!(y instanceof this.Long) ? new this.Long(y) : void 0).lt(this);
     };
 
     Long.prototype.gte = function(y) {
@@ -734,7 +753,7 @@
       u = new this.Long(0);
       v = new this.Long(0);
       x = this;
-      if (!(y instanceof Long)) {
+      if (!(y instanceof this.Long)) {
         y = new this.Long(y);
       }
       if ((x.eq([0])) || (y.eq([0]))) {
@@ -785,7 +804,7 @@
 
     Long.prototype.invmod = function(m) {
       var a, b, c, d, g, u, v, _ref;
-      if (!(m instanceof Long)) {
+      if (!(m instanceof this.Long)) {
         m = new this.Long(m);
       }
       if ((m = m.abs()).lte([1])) {

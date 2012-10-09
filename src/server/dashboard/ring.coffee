@@ -14,11 +14,12 @@ assert = do () ->
 
   (cond) -> if not cond then throw stackTrace()
 
-class Residue
+
+class Residue extends Long
 
 class RingMod
 
-  { _add, _div, _lt, _mod, _mul, _shl, _shr, _size, _sub, _zeros } = Long
+  { _add, _div, _lt, _mod, _mul, _shl, _shr, _size, _sub, _trim, _zeros } = Long
 
   # (- M)^-1 mod b
   _cofactor = (ms) ->
@@ -32,7 +33,6 @@ class RingMod
     M = (if M instanceof Long then M else new Long M).digits
 
     return class RingResidue extends Residue
-
                                     # HAC equivalent
       @M  = M                       # m
       @K  = K  = _size M            # t
@@ -94,8 +94,9 @@ class RingMod
         y_0 = ys[0]
         for i in [0...K] by 1
           x_i = xs[i]
-          u_i = (_add [xs[0]], _mul (_mul [x_i], [y_0]), W)[0]
+          u_i = (_mul W, _add [zs[0]], _mul [x_i], [y_0])[0]
           _add zs, _add (_mul ys, [x_i]), _mul M, [u_i]
+          # assert zs[0] is 0
           _shr zs, 1
 
         _sub zs, M if not _lt zs, M
@@ -122,51 +123,41 @@ class RingMod
       @_pow:       _pow
 
 
+      Long: RingResidue
+
       constructor: (x) ->
-        if x instanceof RingResidue
-          @digits = x.digits.slice()
+        super x
+        @digits = _negate @digits if @sign < 0
+        @digits = _trim _lift _reduce @digits if not _lt @digits, M
+        @sign = 1
 
-        else
-          x = x.toLong() if x instanceof Residue
-          x = new Long x if not (x instanceof Long)
 
-          xs = _toRing x.digits.slice()
-          xs = _negate xs if x.sign < 0
-          @digits = xs
-
-      valueOf: () -> @toLong().valueOf()
-
-      toString: (radix) -> @toLong().toString(radix)
-
-      toLong: () -> new Long _toLong @digits.slice()
 
       negate: () ->
-        z = new RingResidue
-        z.digits = _negate xs.slice()
+        z = new @Long this
+        z.digits = _negate z.digits
         z
 
-      add: (y) ->
-        y = new RingResidue y if not (y instanceof RingResidue)
-        z = new RingResidue
+      abs: () -> new @Long this
 
-        z.digits = _add @digits.slice(), y.digits
-        z
-
-      sub: (y) -> @add (new RingResidue y).negate()
 
       mul: (y) ->
-        y = new RingResidue y if not (y instanceof RingResidue)
-        z = new RingResidue
+        y = new @Long y if not (y instanceof @Long)
+        z = new @Long
 
-        z.digits = _lift _mul @digits, y.digits
+        z.digits = _lift _mont @digits, y.digits
         z
 
+      kmul: (y) -> @mul y
+
+
       pow: (y) ->
-        y = new RingResidue y if not (y instanceof RingResidue)
-        z = new RingResidue
+        y = new @Long y if not (y instanceof @Long)
+        z = new @Long
 
         z.digits = _pow @digits, y.digits
         z
+
 
   @test: () ->
     { floor, random } = Math
@@ -253,7 +244,7 @@ class RingMod
           for j in [0..7]
             y = new Rmod7 j
             expected = ((new Long x).mul y).mod 7
-            actual = new Long x.mul y
+            actual = x.mul y
             assert expected.eq actual
             passed++
 
@@ -280,26 +271,21 @@ class RingMod
             x = residues[i]
             y = residues[L+i]
             expected = ((new Long x).mul y).mod R.M
-            actual = new Long x.mul y
+            actual = x.mul y
             assert expected.eq actual
             passed++
-
-        console.log name + ': ' + passed
 
       catch err
         console.log name + ' test failed on pass ' + (passed+1) + '.'
         console.log 'M:', R.M.valueOf() if R?
-        console.log 'x:', x.valueOf() if x?
-        console.log 'y:', y.valueOf() if y?
+        console.log 'x:', '0x' + x.toString(16) if x?
+        console.log 'y:', '0x' + y.toString(16) if y?
         console.log 'expected:', expected.valueOf() if expected?
         console.log 'actual:', actual.valueOf() if actual?
         console.log err
         console.log err.message
 
-
-  @diagnose: () ->
-    xs = _repr '55e3ae083d0cbdfec136f83823c2d8ad457638380374d291c'
-    m = Long 2147483647
+      console.log name + ': ' + passed
 
 window.Residue = Residue
 window.RingMod = RingMod

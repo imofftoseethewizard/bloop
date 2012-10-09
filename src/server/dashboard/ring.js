@@ -52,18 +52,22 @@
     };
   })();
 
-  Residue = (function() {
+  Residue = (function(_super) {
 
-    function Residue() {}
+    __extends(Residue, _super);
+
+    function Residue() {
+      return Residue.__super__.constructor.apply(this, arguments);
+    }
 
     return Residue;
 
-  })();
+  })(Long);
 
   RingMod = (function() {
-    var _add, _cofactor, _div, _lt, _mod, _mul, _shl, _shr, _size, _sub, _zeros;
+    var _add, _cofactor, _div, _lt, _mod, _mul, _shl, _shr, _size, _sub, _trim, _zeros;
 
-    _add = Long._add, _div = Long._div, _lt = Long._lt, _mod = Long._mod, _mul = Long._mul, _shl = Long._shl, _shr = Long._shr, _size = Long._size, _sub = Long._sub, _zeros = Long._zeros;
+    _add = Long._add, _div = Long._div, _lt = Long._lt, _mod = Long._mod, _mul = Long._mul, _shl = Long._shl, _shr = Long._shr, _size = Long._size, _sub = Long._sub, _trim = Long._trim, _zeros = Long._zeros;
 
     _cofactor = function(ms) {
       var w, ws;
@@ -167,7 +171,7 @@
           y_0 = ys[0];
           for (i = _i = 0; _i < K; i = _i += 1) {
             x_i = xs[i];
-            u_i = (_add([xs[0]], _mul(_mul([x_i], [y_0]), W)))[0];
+            u_i = (_mul(W, _add([zs[0]], _mul([x_i], [y_0]))))[0];
             _add(zs, _add(_mul(ys, [x_i]), _mul(M, [u_i])));
             _shr(zs, 1);
           }
@@ -206,74 +210,50 @@
 
         RingResidue._pow = _pow;
 
+        RingResidue.prototype.Long = RingResidue;
+
         function RingResidue(x) {
-          var xs;
-          if (x instanceof RingResidue) {
-            this.digits = x.digits.slice();
-          } else {
-            if (x instanceof Residue) {
-              x = x.toLong();
-            }
-            if (!(x instanceof Long)) {
-              x = new Long(x);
-            }
-            xs = _toRing(x.digits.slice());
-            if (x.sign < 0) {
-              xs = _negate(xs);
-            }
-            this.digits = xs;
+          RingResidue.__super__.constructor.call(this, x);
+          if (this.sign < 0) {
+            this.digits = _negate(this.digits);
           }
+          if (!_lt(this.digits, M)) {
+            this.digits = _trim(_lift(_reduce(this.digits)));
+          }
+          this.sign = 1;
         }
-
-        RingResidue.prototype.valueOf = function() {
-          return this.toLong().valueOf();
-        };
-
-        RingResidue.prototype.toString = function(radix) {
-          return this.toLong().toString(radix);
-        };
-
-        RingResidue.prototype.toLong = function() {
-          return new Long(_toLong(this.digits.slice()));
-        };
 
         RingResidue.prototype.negate = function() {
           var z;
-          z = new RingResidue;
-          z.digits = _negate(xs.slice());
+          z = new this.Long(this);
+          z.digits = _negate(z.digits);
           return z;
         };
 
-        RingResidue.prototype.add = function(y) {
-          var z;
-          if (!(y instanceof RingResidue)) {
-            y = new RingResidue(y);
-          }
-          z = new RingResidue;
-          z.digits = _add(this.digits.slice(), y.digits);
-          return z;
-        };
-
-        RingResidue.prototype.sub = function(y) {
-          return this.add((new RingResidue(y)).negate());
+        RingResidue.prototype.abs = function() {
+          return new this.Long(this);
         };
 
         RingResidue.prototype.mul = function(y) {
           var z;
-          if (!(y instanceof RingResidue)) {
-            y = new RingResidue(y);
+          if (!(y instanceof this.Long)) {
+            y = new this.Long(y);
           }
-          z = new RingResidue;
-          z.digits = _lift(_mul(this.digits, y.digits));
+          z = new this.Long;
+          z.digits = _lift(_mont(this.digits, y.digits));
           return z;
+        };
+
+        RingResidue.prototype.kmul = function(y) {
+          return this.mul(y);
         };
 
         RingResidue.prototype.pow = function(y) {
           var z;
-          if (!(y instanceof RingResidue)) {
-            y = new RingResidue(y);
+          if (!(y instanceof this.Long)) {
+            y = new this.Long(y);
           }
-          z = new RingResidue;
+          z = new this.Long;
           z.digits = _pow(this.digits, y.digits);
           return z;
         };
@@ -437,7 +417,7 @@
             for (j = _j = 0; _j <= 7; j = ++_j) {
               y = new Rmod7(j);
               expected = ((new Long(x)).mul(y)).mod(7);
-              actual = new Long(x.mul(y));
+              actual = x.mul(y);
               assert(expected.eq(actual));
               passed++;
             }
@@ -475,22 +455,21 @@
               x = residues[i];
               y = residues[L + i];
               expected = ((new Long(x)).mul(y)).mod(R.M);
-              actual = new Long(x.mul(y));
+              actual = x.mul(y);
               assert(expected.eq(actual));
               passed++;
             }
           }
-          return console.log(name + ': ' + passed);
         } catch (err) {
           console.log(name + ' test failed on pass ' + (passed + 1) + '.');
           if (R != null) {
             console.log('M:', R.M.valueOf());
           }
           if (x != null) {
-            console.log('x:', x.valueOf());
+            console.log('x:', '0x' + x.toString(16));
           }
           if (y != null) {
-            console.log('y:', y.valueOf());
+            console.log('y:', '0x' + y.toString(16));
           }
           if (expected != null) {
             console.log('expected:', expected.valueOf());
@@ -499,15 +478,82 @@
             console.log('actual:', actual.valueOf());
           }
           console.log(err);
-          return console.log(err.message);
+          console.log(err.message);
         }
+        return console.log(name + ': ' + passed);
       })();
     };
 
-    RingMod.diagnose = function() {
-      var m, xs;
-      xs = _repr('55e3ae083d0cbdfec136f83823c2d8ad457638380374d291c');
-      return m = Long(2147483647);
+    RingMod.candidates = [];
+
+    RingMod.diagnose = (function() {
+      return function(x, y) {
+        var actual, bits, expected, i, _i, _j, _ref, _ref1;
+        bits = Long._getRadix() * _size(x.digits);
+        for (i = _i = _ref = bits - 1; _i >= 0; i = _i += -1) {
+          try {
+            if (x.bit(i)) {
+              x.bitset(i, 0);
+              expected = ((new Long(x)).mul(y)).mod(x.constructor.M);
+              actual = x.mul(y);
+              assert(expected.eq(actual));
+              x.bitset(i, 1);
+            }
+          } catch (err) {
+
+          }
+        }
+        bits = Long._getRadix() * _size(y.digits);
+        for (i = _j = _ref1 = bits - 1; _j >= 0; i = _j += -1) {
+          try {
+            if (y.bit(i)) {
+              y.bitset(i, 0);
+              expected = ((new Long(x)).mul(y)).mod(x.constructor.M);
+              actual = x.mul(y);
+              assert(expected.eq(actual));
+              y.bitset(i, 1);
+            }
+          } catch (err) {
+
+          }
+        }
+        RingMod.candidates.push([x, y]);
+        if (RingMod.candidates.length >= 100) {
+          throw 'lotsa candidates';
+        }
+      };
+    })();
+
+    RingMod.shortest = function() {
+      var minPair, minSize, x, xySize, y, _i, _len, _ref, _ref1;
+      minSize = Infinity;
+      minPair = null;
+      _ref = RingMod.candidates;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        _ref1 = _ref[_i], x = _ref1[0], y = _ref1[1];
+        xySize = (_size(x.digits)) + (_size(y.digits));
+        if (xySize < minSize) {
+          minSize = xySize;
+          minPair = [x, y];
+        }
+      }
+      return minPair;
+    };
+
+    RingMod.fewest = function() {
+      var minBits, minPair, x, xyBits, y, _i, _len, _ref, _ref1;
+      minBits = Infinity;
+      minPair = null;
+      _ref = RingMod.candidates;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        _ref1 = _ref[_i], x = _ref1[0], y = _ref1[1];
+        xyBits = x.bitcount() + y.bitcount();
+        if (xyBits < minBits) {
+          minBits = xyBits;
+          minPair = [x, y];
+        }
+      }
+      return minPair;
     };
 
     return RingMod;
